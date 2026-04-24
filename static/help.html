@@ -1,4 +1,27 @@
-<p><strong>スカラー（数値）</strong>：行列セル以外にフォーカスがあるとき、数字・小数点・指数表記（<code>e</code>/<code>E</code> と指数部の <code>+</code>/<code>-</code> のみ、例 <code>1e-6</code>）をキーボードで入力すると式バーに数値ブロックができます（演算子や括弧の前後で確定します）。数値を入力しているあいだは <code>Enter</code> でその数値をトークンとして確定できます。式全体の計算は <code>=</code> です。<code>+</code> <code>-</code> <code>*</code> <code>/</code> <code>**</code> は数値に含めず、いずれも演算子トークンとして扱います（負の数は <code>-</code> トークンのあとに数値トークン）。<strong>val</strong> ボタンは、キーボード入力と同じ数値下書き（破線枠）を空の状態から開きます。空のときに打てる先頭文字は <code>0</code>–<code>9</code> と <code>.</code> のみです。空のまま Backspace、または先頭に使えないキーを押すと閉じます。一度入力したあと中身を空に戻しても閉じます。</p>
-<p><strong>演算子（キー）</strong>：<code>+</code> <code>-</code> <code>*</code> <code>/</code> はキーボード・テンキー（NumPad）から入力できます。<code>*</code> を続けて押すと <code>**</code>（累乗）にまとまります。</p>
-<p><strong>変数記号（キー）</strong>：許可された1文字記号は1回のキーで1トークンとして式に入ります（連続入力による複数文字の変数名はありません）。大文字は小文字に揃えます。開発者向けのキー割り当ての全体は <code>docs/KEYBOARD.md</code> を参照してください。</p>
-<p><strong>n乗</strong>：指数としての記号 <strong>n</strong>（整数パラメータ）を表します。キーの <strong>n</strong> で式に <code>n</code> が入り、例としてスカラー <code>3</code> のあとに押すと <code>3**n</code> になります。行列トークンのあとでも同様に <code>__M…**n</code> となります。</p>
+<h3>＜行列電卓の概要＞</h3>
+<p>このアプリは、行列とスカラーを組み合わせた式を入力して計算できる電卓です。四則演算、行列の基本操作、分解系の演算に対応しています。</p>
+<p>基本の流れは、<strong>行列を追加</strong> → <strong>式を作成</strong> → <strong>= で計算</strong> です。</p>
+
+<h3>＜演算子パネル＞</h3>
+<ul>
+  <li><code>四則演算と累乗</code>：キーボード入力対応</li>
+  <li><code>val</code>：スカラーを入力できる。キーボード入力対応</li>
+  <li><code>()</code>：上2つ以外は全て括弧で閉じる必要がある。キーボード入力対応</li>
+  <li><code>det</code>：行列式</li>
+  <li><code>tr</code>：トレース（対角成分の和）</li>
+  <li><code>norm</code>：ノルム（各要素の二乗和の平方根）</li>
+  <li><code>T</code>：転置</li>
+  <li><code>H</code>：エルミート転置（共役転置）</li>
+  <li><code>inv</code>：逆行列</li>
+  <li><code>rref</code>：行基本変形の簡約形</li>
+  <li><code>eig</code>：固有値・固有ベクトル</li>
+  <li><code>LU</code>：LU分解（上三角行列と下三角行列）</li>
+  <li><code>SVD</code>：特異値分解</li>
+  <li><code>QR</code>：QR分解</li>
+  <li><code>jord</code>：ジョルダン分解</li>
+  <li><code>=</code>：計算実行。キーボード入力対応（Enterは未対応）</li>
+</ul>
+
+<h3>＜行列入力＞</h3>
+<p><strong>入力可能な文字</strong>：数字、小数点、演算子(分数対応)、括弧、i, pi, sqrt, exp, sin, cos, log, a, b, c, x, y, z, n</p>
+
