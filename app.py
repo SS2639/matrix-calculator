@@ -268,9 +268,32 @@ def _is_rate_limited(client_key):
         return False, 0
 
 
+def _is_mobile_user_agent(user_agent):
+    ua = str(user_agent or "").lower()
+    mobile_markers = (
+        "android",
+        "iphone",
+        "ipad",
+        "ipod",
+        "mobile",
+        "windows phone",
+    )
+    return any(marker in ua for marker in mobile_markers)
+
+
 @app.route('/')
 def home():
-    return render_template("index.html")
+    query_ui = str(request.args.get("ui", "")).strip().lower()
+    query_forced = query_ui in {"desktop", "mobile"}
+    if query_forced:
+        ui_mode = query_ui
+    else:
+        user_agent = request.headers.get("User-Agent", "")
+        ui_mode = "mobile" if _is_mobile_user_agent(user_agent) else "desktop"
+    return render_template(
+        f"ui/{ui_mode}/index.html",
+        ui_mode=ui_mode,
+    )
 
 
 @app.after_request

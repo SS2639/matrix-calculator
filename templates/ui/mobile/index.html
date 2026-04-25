@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>行列電卓 (Mobile)</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/desktop/index.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/mobile/index.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/ui/switcher.css') }}">
+</head>
+<body data-ui-mode="{{ ui_mode|default('mobile') }}">
+  <header class="mobile-header">
+    <h1>行列電卓</h1>
+    <button type="button" class="ui-switch-btn" data-ui-switch-target="desktop">デスクトップ表示へ</button>
+  </header>
+
+  <main class="mobile-main">
+    <section class="mobile-card mobile-result-card">
+      <h2 class="mobile-section-title">結果</h2>
+      <div class="result-log" data-mobile-result-log></div>
+    </section>
+
+    <section class="mobile-card mobile-expression-card">
+      <h2 class="mobile-section-title">式入力</h2>
+      <div class="top-bar">
+        <div
+          class="expression-bar"
+          tabindex="0"
+          role="textbox"
+          aria-label="数式"
+          aria-multiline="false"
+        ></div>
+        <button type="button" class="clear-btn" aria-label="式をクリア">C</button>
+      </div>
+    </section>
+
+    <section class="mobile-card mobile-operators-card">
+      <h2 class="mobile-section-title">演算子</h2>
+      <div class="operator-pad mobile-operator-pad">
+        <div class="operator-pad-tabs" role="tablist" aria-label="演算子カテゴリ">
+          <button type="button" class="op-tab-btn is-active" role="tab" aria-selected="true" data-tab="arithmetic">四則演算</button>
+          <button type="button" class="op-tab-btn" role="tab" aria-selected="false" data-tab="basic">基本</button>
+          <button type="button" class="op-tab-btn" role="tab" aria-selected="false" data-tab="decompose">分解</button>
+        </div>
+        <div class="operator-tab-panels">
+          <div class="operator-tab-panel is-active" data-panel="arithmetic" role="tabpanel">
+            <div class="op-row">
+              <button type="button" class="op-btn binary-op" data-op="+">+</button>
+              <button type="button" class="op-btn binary-op" data-op="-">-</button>
+              <button type="button" class="op-btn binary-op" data-op="*">*</button>
+              <button type="button" class="op-btn binary-op" data-op="/">/</button>
+              <button type="button" class="op-btn binary-op" data-op="**">**</button>
+              <button type="button" class="op-btn scalar-op-btn" data-op="val">val</button>
+              <button type="button" class="op-btn paren" data-op="(">(</button>
+              <button type="button" class="op-btn paren" data-op=")">)</button>
+              <button type="button" class="calc-btn">=</button>
+            </div>
+          </div>
+          <div class="operator-tab-panel" data-panel="basic" role="tabpanel">
+            <div class="op-row">
+              <button type="button" class="op-btn operation-func" data-op="det">det</button>
+              <button type="button" class="op-btn analysis-func" data-op="tr">tr</button>
+              <button type="button" class="op-btn operation-func" data-op="norm">norm</button>
+              <button type="button" class="op-btn operation-func" data-op="t">T</button>
+              <button type="button" class="op-btn operation-func" data-op="H">H</button>
+              <button type="button" class="op-btn operation-func" data-op="inv">inv</button>
+              <button type="button" class="op-btn analysis-func" data-op="rref">rref</button>
+            </div>
+          </div>
+          <div class="operator-tab-panel" data-panel="decompose" role="tabpanel">
+            <div class="op-row">
+              <button type="button" class="op-btn analysis-func" data-op="eig">eig</button>
+              <button type="button" class="op-btn analysis-func" data-op="LU">LU</button>
+              <button type="button" class="op-btn analysis-func" data-op="SVD">SVD</button>
+              <button type="button" class="op-btn analysis-func" data-op="QR">QR</button>
+              <button type="button" class="op-btn analysis-func" data-op="jord">jord</button>
+              <button type="button" class="op-btn operation-func" data-op="exp">exp</button>
+              <button type="button" class="op-btn operation-func" data-op="sin">sin</button>
+              <button type="button" class="op-btn operation-func" data-op="cos">cos</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="mobile-card mobile-matrix-card">
+      <h2 class="mobile-section-title">行列</h2>
+      <div class="mobile-matrix-toolbar">
+        <button type="button" class="add-matrix-btn" data-mobile-add-matrix>行列追加</button>
+        <div class="mobile-page-controls">
+          <button type="button" class="mobile-nav-btn" data-mobile-nav="prev">&lt;</button>
+          <span class="mobile-page-indicator" data-mobile-page-indicator>0/0</span>
+          <button type="button" class="mobile-nav-btn" data-mobile-nav="next">&gt;</button>
+        </div>
+      </div>
+      <div class="mobile-matrix-viewport" data-mobile-matrix-viewport>
+        <div class="mobile-matrix-track" data-mobile-matrix-track></div>
+      </div>
+    </section>
+  </main>
+
+  <script type="module" src="{{ url_for('static', filename='js/ui/switcher.js') }}"></script>
+  <script type="module" src="{{ url_for('static', filename='js/ui/mobile/main.js') }}"></script>
+</body>
+</html>

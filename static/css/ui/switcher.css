@@ -1,0 +1,31 @@
+.ui-switch-btn {
+  min-height: 34px;
+  padding: 0 12px;
+  font-size: 14px;
+  border: 1px solid #6a93f6;
+  border-radius: 999px;
+  background: #f2f6ff;
+  color: #1a4bc6;
+  font-weight: 600;
+}
+
+.ui-switch-btn:hover {
+  background: #e5edff;
+}
+
+.ui-switch-btn:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.ui-switcher-slot {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+body[data-ui-mode="desktop"] .page-header {
+  position: relative;
+  padding-right: 170px;
+}
