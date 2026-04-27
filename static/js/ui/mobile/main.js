@@ -1,9 +1,9 @@
-import { setTokenManager, renderGroup } from "../../matrixGroup.js";
+import { setTokenManager, renderGroup } from "../../core/matrixGroup.js";
 import { TokenManager } from "../../core/tokenManager.js";
-import { displayResult } from "../../displayResult.js";
+import { displayResult } from "../../core/displayResult.js";
 import { fetchParsedTokens } from "../../core/api.js";
 import { isValidScalarTokenContent } from "../../core/scalarValidate.js";
-import { initHelp } from "../../help.js";
+import { initHelp } from "../../core/help.js";
 
 const SWIPE_THRESHOLD_RATIO = 0.2;
 
@@ -59,6 +59,32 @@ function highlightMatrixCellError(result) {
 function renderLatestResult(resultLog, tokensData, result) {
   resultLog.innerHTML = "";
   displayResult(tokensData, result, null, resultLog);
+}
+
+function createScalarCommitter({ tokenManager, scalarInput, scalarError }) {
+  function showScalarError(message) {
+    if (!scalarError) return;
+    scalarError.textContent = message || "";
+  }
+
+  function commitScalarFromInput() {
+    const raw = String(scalarInput?.value ?? "");
+    const value = raw.trim();
+    if (!value) {
+      showScalarError("");
+      return { ok: false, reason: "EMPTY" };
+    }
+    if (!isValidScalarTokenContent(value)) {
+      showScalarError("不正な数値です");
+      return { ok: false, reason: "INVALID" };
+    }
+    showScalarError("");
+    tokenManager.addToken(value, "scalar");
+    scalarInput.value = "";
+    return { ok: true };
+  }
+
+  return { commitScalarFromInput, showScalarError };
 }
 
 function createMobilePager({ viewport, track, indicator, prevBtn, nextBtn }) {
@@ -258,9 +284,22 @@ function initOperatorTabs() {
   });
 }
 
-function initOperatorPad(tokenManager, runCalc) {
+function initOperatorPad(tokenManager, runCalc, scalarInput, commitScalarFromInput) {
   const operatorPad = document.querySelector(".operator-pad");
   if (!operatorPad) return;
+
+  const addBinaryToken = (op) => {
+    if (op === "*") {
+      const prev = tokenManager.cursorIndex > 0 ? tokenManager.tokens[tokenManager.cursorIndex - 1] : null;
+      if (prev && prev.type === "binary-op" && prev.content === "*") {
+        prev.content = "**";
+        tokenManager.renderAll();
+        return;
+      }
+    }
+    tokenManager.addToken(op, "binary-op");
+  };
+
   operatorPad.addEventListener("click", (e) => {
     const calc = e.target.closest(".calc-btn");
     if (calc) {
@@ -271,10 +310,22 @@ function initOperatorPad(tokenManager, runCalc) {
     const btn = e.target.closest(".op-btn");
     if (!btn || !operatorPad.contains(btn)) return;
     const op = btn.getAttribute("data-op") ?? "";
+    if (op === "*" || op === "**" || op === "+" || op === "-" || op === "/") {
+      e.preventDefault();
+      addBinaryToken(op);
+      return;
+    }
     const typeHint = Array.from(btn.classList).find(
       (c) => c !== "op-btn" && ["binary-op", "operation-func", "analysis-func", "scalar-op-btn", "paren"].includes(c)
     );
-    tokenManager.insertFromPad(op, typeHint || "operation-func");
+    tokenManager.addToken(op, typeHint || "operation-func");
+  });
+
+  scalarInput?.addEventListener("keydown", (e) => {
+    if (e.key !== "Enter") return;
+    e.preventDefault();
+    if (e.repeat) return;
+    commitScalarFromInput();
   });
 }
 
@@ -288,6 +339,9 @@ function initMobileApp() {
   const nextBtn = document.querySelector('[data-mobile-nav="next"]');
   const addMatrixBtn = document.querySelector("[data-mobile-add-matrix]");
   const clearBtn = document.querySelector(".clear-btn");
+  const backspaceBtn = document.querySelector(".mobile-backspace-btn");
+  const scalarInput = document.querySelector("[data-mobile-scalar-input]");
+  const scalarError = document.querySelector("[data-mobile-scalar-error]");
 
   if (
     !expressionBarEl ||
@@ -297,7 +351,8 @@ function initMobileApp() {
     !pageIndicator ||
     !prevBtn ||
     !nextBtn ||
-    !addMatrixBtn
+    !addMatrixBtn ||
+    !scalarInput
   ) {
     return;
   }
@@ -313,6 +368,11 @@ function initMobileApp() {
   });
   setTokenManager(tokenManager);
   initHelp();
+  const { commitScalarFromInput, showScalarError } = createScalarCommitter({
+    tokenManager,
+    scalarInput,
+    scalarError,
+  });
 
   const pager = createMobilePager({
     viewport: matrixViewport,
@@ -342,6 +402,12 @@ function initMobileApp() {
   addMatrixBtn.addEventListener("click", addMatrix);
   clearBtn?.addEventListener("click", () => {
     tokenManager.clearAll();
+    showScalarError("");
+    scalarInput.focus({ preventScroll: true });
+  });
+  backspaceBtn?.addEventListener("click", () => {
+    tokenManager.deletePrevToken();
+    showScalarError("");
     expressionBarEl.focus({ preventScroll: true });
   });
 
@@ -393,15 +459,9 @@ function initMobileApp() {
   }
 
   initOperatorTabs();
-  initOperatorPad(tokenManager, runCalc);
+  initOperatorPad(tokenManager, runCalc, scalarInput, commitScalarFromInput);
 
-  document.addEventListener("keydown", (e) => {
-    if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA") return;
-    if (document.body.classList.contains("help-open")) return;
-    if (e.key !== "=") return;
-    e.preventDefault();
-    runCalc();
-  });
+  // MobileではDesktop前提のグローバルキーボード実行を無効化する。
 
   addMatrix();
 }

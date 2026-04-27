@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 単一ソース static/data/allowed_symbols.json から
-static/js/allowedSymbols.gen.js を生成する。
+static/js/core/allowedSymbols.gen.js を生成する。
 
 記号集合を変更したらこのスクリプトを実行し、生成ファイルをコミットすること。
 expr_calc.py は JSON を直接読み、フロントは .gen.js を import する。
@@ -14,7 +14,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 JSON_PATH = ROOT / "static" / "data" / "allowed_symbols.json"
-OUT_PATH = ROOT / "static" / "js" / "allowedSymbols.gen.js"
+OUT_PATH = ROOT / "static" / "js" / "core" / "allowedSymbols.gen.js"
 
 
 def main() -> int:

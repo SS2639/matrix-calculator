@@ -42,11 +42,68 @@ body[data-ui-mode="mobile"] {
 }
 
 .mobile-expression-card .top-bar {
+  align-items: center;
   gap: 8px;
 }
 
 .mobile-expression-card .expression-bar {
-  min-height: 44px;
+  height: 52px;
+  min-height: 52px;
+  box-sizing: border-box;
+  padding: 0 10px;
+}
+
+.mobile-expression-actions {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+}
+
+.mobile-expression-actions .mobile-backspace-btn,
+.mobile-expression-actions .clear-btn {
+  width: 56px;
+  min-width: 56px;
+  height: 52px;
+  min-height: 52px;
+  box-sizing: border-box;
+  padding: 0;
+  font-size: 18px;
+}
+
+.mobile-scalar-input-wrap {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.mobile-scalar-label {
+  font-size: 12px;
+  color: #4a5976;
+}
+
+.mobile-scalar-input {
+  width: 100%;
+  min-height: 38px;
+  box-sizing: border-box;
+  border: 1px solid #c8d6f1;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 16px;
+  background: #fff;
+}
+
+.mobile-scalar-input:focus {
+  border-color: #4d79ff;
+  outline: 2px solid #dbe7ff;
+  outline-offset: 0;
+}
+
+.mobile-scalar-error {
+  min-height: 1.2em;
+  margin: 0;
+  font-size: 12px;
+  color: #cc2d2d;
 }
 
 .mobile-operator-pad .operator-pad-tabs {

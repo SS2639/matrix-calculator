@@ -1,1 +1,129 @@
-@import url("../style.css");
+/* ==========================
+   Desktop 固有レイアウト
+   ========================== */
+body {
+  margin: 20px;
+  display: block;
+  box-sizing: border-box;
+}
+
+/* タイトル＋ヘルプ（同じスクロールで消える） */
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.page-header h1 {
+  margin: 0;
+  text-align: center;
+}
+
+/* ==========================
+   電卓パネル
+   ========================== */
+.calculator-panel {
+  background-color: #ffffff;
+  border-radius: 10px;
+  padding: 10px 15px;
+  max-width: 100%;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  margin-bottom: 16px;
+}
+
+/* ==========================
+   2カラムレイアウト
+   ========================== */
+.workspace-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 550px;
+  gap: 24px;
+  align-items: start;
+  min-width: 0;
+}
+
+.left-pane {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  position: relative;
+  z-index: 1;
+  overflow-x: auto;
+  overflow-y: visible;
+}
+
+/* 左ペイン内コンテナの幅制約（横スクロールはコンテナ側で吸収） */
+.operator-pad,
+.matrices-container {
+  min-width: 0;
+}
+
+.expression-bar {
+  height: 52px;
+  min-height: 52px;
+  box-sizing: border-box;
+  padding: 0 10px;
+}
+
+.desktop-expression-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.desktop-expression-actions .desktop-backspace-btn,
+.desktop-expression-actions .clear-btn {
+  width: 56px;
+  min-width: 56px;
+  height: 52px;
+  min-height: 52px;
+  box-sizing: border-box;
+  padding: 0;
+  font-size: 18px;
+}
+
+.clear-btn {
+  height: 52px;
+  min-height: 52px;
+  box-sizing: border-box;
+}
+
+/* ==========================
+   結果ログ（右ペイン固定）
+   ========================== */
+.result-log-wrapper {
+  position: sticky;
+  top: 20px;
+  width: 550px;
+  max-width: 550px;
+  max-height: calc(100vh - 40px);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  z-index: 1;
+  font-family: sans-serif;
+  box-sizing: border-box;
+  align-self: start;
+  min-width: 0;
+}
+
+/* タイトル */
+.result-log-title {
+  font-size: 18px;
+  font-weight: bold;
+  color: #333;
+  padding: 4px 8px;
+  text-align: left;
+}
+
+/* 既存の幅制約は維持 */
+.result-log {
+  min-width: 0;
+  max-width: 100%;
+}

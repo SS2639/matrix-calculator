@@ -1,25 +1,10 @@
 /* ==========================
-   基本スタイル
+   基本スタイル（Desktop / Mobile 共通）
    ========================== */
 body {
   font-family: sans-serif;
   line-height: 1.6;
-  margin: 20px;
   background-color: #fdfdfd;
-}
-
-/* タイトル＋ヘルプ（同じスクロールで消える） */
-.page-header {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  margin-bottom: 20px;
-}
-
-.page-header h1 {
-  margin: 0;
-  text-align: center;
 }
 
 .help-btn {
@@ -387,19 +372,8 @@ button:disabled {
 }
 
 /* ==========================
-   電卓パネル
+   式バー
    ========================== */
-.calculator-panel {
-  background-color: #ffffff;
-  border-radius: 10px;
-  padding: 10px 15px;
-  max-width: 100%;
-  box-sizing: border-box;
-  display: flex;
-  flex-direction: column;
-  gap: 15px;
-}
-
 .top-bar {
   display: flex;
   align-items: center;
@@ -445,6 +419,9 @@ button:disabled {
   margin: 0 2px;
 }
 
+/* ==========================
+   演算子パッド
+   ========================== */
 .operator-pad {
   display: flex;
   flex-direction: column;
@@ -464,14 +441,14 @@ button:disabled {
 .op-tab-btn {
   width: auto;
   height: auto;
-  min-height: 0;
-  padding: 4px 11px;
+  min-height: 40px;
+  padding: 8px 16px;
   line-height: 1.3;
   border: 1px solid #dcdcdc;
   border-radius: 999px;
   background: #ffffff;
   color: #444;
-  font-size: 12px;
+  font-size: 15px;
   font-weight: 500;
   cursor: pointer;
   box-shadow: none;
@@ -536,32 +513,6 @@ button:disabled {
 /* ==========================
    結果ログ
    ========================== */
-/* ラッパー：幅固定（狭い画面のみビューポートに合わせて縮小） */
-.result-log-wrapper {
-  position: sticky;
-  top: 20px;
-  width: 550px;
-  max-width: 550px;
-  max-height: calc(100vh - 40px);
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  z-index: 1;
-  font-family: sans-serif;
-  box-sizing: border-box;
-  align-self: start;
-  min-width: 0;
-}
-
-/* タイトル */
-.result-log-title {
-  font-size: 18px;
-  font-weight: bold;
-  color: #333;
-  padding: 4px 8px;
-  text-align: left;
-}
-
 /* 結果コンテナ（縦スクロールのみ。横は各 result-group 内で処理） */
 .result-log {
   flex-grow: 1;
@@ -763,52 +714,3 @@ button:disabled {
   display: inline-block;
   vertical-align: middle;
 }
-
-/* ==========================
-   2カラムレイアウト
-   ========================== */
-body {
-  margin: 20px;
-  display: block;
-  box-sizing: border-box;
-}
-
-.page-header {
-  margin-bottom: 16px;
-}
-
-.calculator-panel {
-  margin-bottom: 16px;
-}
-
-.workspace-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 550px;
-  gap: 24px;
-  align-items: start;
-  min-width: 0;
-}
-
-.left-pane {
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  position: relative;
-  z-index: 1;
-  overflow-x: auto;
-  overflow-y: visible;
-}
-
-.operator-pad,
-.matrices-container {
-  min-width: 0;
-}
-
-/* 既存の幅制約は維持 */
-.result-log {
-  min-width: 0;
-  max-width: 100%;
-}
-
-/* 常時2列固定：狭い画面では各カラム内でスクロールさせる */

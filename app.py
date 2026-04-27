@@ -227,9 +227,10 @@ def initialize_runtime():
 
 
 def apply_runtime_mode_settings(debug):
-    # Keep template reload behavior in one place to avoid config drift.
-    app.config["TEMPLATES_AUTO_RELOAD"] = bool(debug)
-    app.jinja_env.auto_reload = bool(debug)
+    # テンプレート変更を即時反映するため、常時 auto reload を有効化する。
+    # （debug=False でも HTML だけ古い状態が残る問題を防ぐ）
+    app.config["TEMPLATES_AUTO_RELOAD"] = True
+    app.jinja_env.auto_reload = True
 
 
 def calc_worker(tokens, matrices, queue):
@@ -301,6 +302,11 @@ def apply_security_headers(response):
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
     response.headers["X-Frame-Options"] = "SAMEORIGIN"
+    if response.content_type and response.content_type.startswith("text/html"):
+        # ブラウザが古い HTML を再利用し続けるのを防ぐ。
+        response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
     return response
 
 

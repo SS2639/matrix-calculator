@@ -1,8 +1,8 @@
 # 式バー・キーボード入力仕様
 
-行列の**セル（`INPUT`）にフォーカスがあるとき**は、セルへの文字入力が優先され、式バー用のショートカットは動きません（`tokenManager.js` / `main.js` で除外）。
+行列の**セル（`INPUT`）にフォーカスがあるとき**は、セルへの文字入力が優先され、式バー用のショートカットは動きません（`core/tokenManager.js` / `ui/desktop/main.js` で除外）。
 
-挿入位置のカーソル（`.cursor`）は**常に表示**されます。`tokenManager` のキー処理は、`document.activeElement` が式バー（`.expression-bar`）のときだけ有効です。式バー内をクリックすると `tabindex="0"` によりフォーカスが当たります。`=` による計算（`main.js`）は式バー未フォーカスでも動作します。
+挿入位置のカーソル（`.cursor`）は**常に表示**されます。`tokenManager` のキー処理は、`document.activeElement` が式バー（`.expression-bar`）のときだけ有効です。式バー内をクリックすると `tabindex="0"` によりフォーカスが当たります。`=` による計算（`ui/desktop/main.js`）は式バー未フォーカスでも動作します。
 
 ## 1. データの単一ソース（記号 `a,b,c,…`）
 
@@ -10,7 +10,7 @@
 |----------|------|
 | [`static/data/allowed_symbols.json`](../static/data/allowed_symbols.json) | **正本**。許可する SymPy 記号（1文字）の JSON 配列。 |
 | [`expr_calc.py`](../expr_calc.py) | 起動時に上記 JSON を読み、`ALLOWED_SYMBOLS` を構築。 |
-| [`static/js/allowedSymbols.gen.js`](../static/js/allowedSymbols.gen.js) | **生成物**（手編集禁止）。フロントの `Set` 用。 |
+| [`static/js/core/allowedSymbols.gen.js`](../static/js/core/allowedSymbols.gen.js) | **生成物**（手編集禁止）。フロントの `Set` 用。 |
 
 記号集合を変えたら:
 
@@ -22,12 +22,12 @@
 
 | モジュール | 内容 |
 |------------|------|
-| [`scalarValidate.js`](../static/js/scalarValidate.js) | 数値リテラル検証、下書きへの1文字追記可否、記号は `ALLOWED_SYMBOL_CHARS` を参照。 |
-| [`tokenManager.js`](../static/js/tokenManager.js) | `keydown` の**評価順**、トークン挿入、数値下書き、`*`→`**` マージ。 |
-| [`main.js`](../static/js/main.js) | 画面初期化、`=` 計算キー配線、オペレータUI配線。 |
-| [`calcRunner.js`](../static/js/calcRunner.js) | 計算実行本体（送信前検証、API呼び出し、エラーセルハイライト）。 |
-| [`help.js`](../static/js/help.js) | ヘルプオーバーレイ制御（開閉、`Esc`、背景クリック、フォーカストラップ）。 |
-| [`displayResult.js`](../static/js/displayResult.js) | 結果ログ表示。エラー時は `message` と `code` を併記。 |
+| [`core/scalarValidate.js`](../static/js/core/scalarValidate.js) | 数値リテラル検証、下書きへの1文字追記可否、記号は `ALLOWED_SYMBOL_CHARS` を参照。 |
+| [`core/tokenManager.js`](../static/js/core/tokenManager.js) | `keydown` の**評価順**、トークン挿入、数値下書き、`*`→`**` マージ。 |
+| [`ui/desktop/main.js`](../static/js/ui/desktop/main.js) | 画面初期化、`=` 計算キー配線、オペレータUI配線。 |
+| [`core/calcRunner.js`](../static/js/core/calcRunner.js) | 計算実行本体（送信前検証、API呼び出し、エラーセルハイライト）。 |
+| [`core/help.js`](../static/js/core/help.js) | ヘルプオーバーレイ制御（開閉、`Esc`、背景クリック、フォーカストラップ）。 |
+| [`core/displayResult.js`](../static/js/core/displayResult.js) | 結果ログ表示。エラー時は `message` と `code` を併記。 |
 
 ## 3. `keydown` の処理順（`tokenManager.initKeyControls`）
 
@@ -50,12 +50,12 @@
 - **`val` で空スロット（`literalDraft === ""`）を開いた直後** → 先頭キーは `0`–`9` と `.` のみ（`+`/`-` は受け付けず、押すとスロットを閉じる）。
 - **`+` `-` `*` `/` `**`** は常に演算子トークン（`*` 連打で `**`）。
 
-## 5. 計算キー（`main.js`）と下書き確定（`tokenManager`）
+## 5. 計算キー（`ui/desktop/main.js`）と下書き確定（`tokenManager`）
 
 - **`=`** → `runCalc`（行列セル・`TEXTAREA` 以外、かつヘルプオーバーレイ表示中でないこと）。
 - **`Enter`** → 式バーにフォーカスがあり **数値下書き中**のときだけ確定（§3 手順 6）。下書きが無いときは計算しない。
 
-## 6. ヘルプオーバーレイ操作（`help.js`）
+## 6. ヘルプオーバーレイ操作（`core/help.js`）
 
 - `?` ボタンで開く。閉じるボタンで閉じる。
 - **`Esc`** で閉じる。
@@ -65,10 +65,10 @@
 
 ## 7. エラー表示とエラーコード
 
-- フロント表示は `displayResult.js` が担当し、`message` に加えて `code` がある場合は `[...]` で併記する。
+- フロント表示は `core/displayResult.js` が担当し、`message` に加えて `code` がある場合は `[...]` で併記する。
 - 例: `0で割ることはできません [DIVISION_BY_ZERO]`
-- `calcRunner.js` は `INVALID_MATRIX_CELL` など `matrixId/row/col` を含むエラーで対象セルをハイライトする。
-- API の HTTP エラー時は `api.js` が本文JSONの `code/message` を優先して返す。
+- `core/calcRunner.js` は `INVALID_MATRIX_CELL` など `matrixId/row/col` を含むエラーで対象セルをハイライトする。
+- API の HTTP エラー時は `core/api.js` が本文JSONの `code/message` を優先して返す。
 
 ## 8. 環境差・未対応
 

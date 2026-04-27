@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>行列電卓 (Mobile)</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/desktop/index.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/base/index.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/mobile/index.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/ui/switcher.css') }}">
 </head>
@@ -21,7 +21,6 @@
     </section>
 
     <section class="mobile-card mobile-expression-card">
-      <h2 class="mobile-section-title">式入力</h2>
       <div class="top-bar">
         <div
           class="expression-bar"
@@ -30,12 +29,28 @@
           aria-label="数式"
           aria-multiline="false"
         ></div>
-        <button type="button" class="clear-btn" aria-label="式をクリア">C</button>
+        <div class="mobile-expression-actions">
+          <button type="button" class="mobile-backspace-btn" aria-label="1つ削除">←</button>
+          <button type="button" class="clear-btn" aria-label="式をクリア">C</button>
+        </div>
+      </div>
+      <div class="mobile-scalar-input-wrap">
+        <label class="mobile-scalar-label" for="mobileScalarInput">数値入力（Enterで確定）</label>
+        <input
+          id="mobileScalarInput"
+          class="mobile-scalar-input"
+          type="text"
+          inputmode="decimal"
+          placeholder="例: -3.5 / 2e-3"
+          autocomplete="off"
+          spellcheck="false"
+          data-mobile-scalar-input
+        >
+        <p class="mobile-scalar-error" data-mobile-scalar-error aria-live="polite"></p>
       </div>
     </section>
 
     <section class="mobile-card mobile-operators-card">
-      <h2 class="mobile-section-title">演算子</h2>
       <div class="operator-pad mobile-operator-pad">
         <div class="operator-pad-tabs" role="tablist" aria-label="演算子カテゴリ">
           <button type="button" class="op-tab-btn is-active" role="tab" aria-selected="true" data-tab="arithmetic">四則演算</button>
@@ -50,7 +65,6 @@
               <button type="button" class="op-btn binary-op" data-op="*">*</button>
               <button type="button" class="op-btn binary-op" data-op="/">/</button>
               <button type="button" class="op-btn binary-op" data-op="**">**</button>
-              <button type="button" class="op-btn scalar-op-btn" data-op="val">val</button>
               <button type="button" class="op-btn paren" data-op="(">(</button>
               <button type="button" class="op-btn paren" data-op=")">)</button>
               <button type="button" class="calc-btn">=</button>
@@ -84,7 +98,6 @@
     </section>
 
     <section class="mobile-card mobile-matrix-card">
-      <h2 class="mobile-section-title">行列</h2>
       <div class="mobile-matrix-toolbar">
         <button type="button" class="add-matrix-btn" data-mobile-add-matrix>行列追加</button>
         <div class="mobile-page-controls">
