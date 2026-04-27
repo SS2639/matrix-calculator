@@ -86,6 +86,8 @@ body[data-ui-mode="mobile"] {
   background: #e7f0ff;
   border: 1px solid #9ebcf8;
   color: #1b4fb8;
+  font-size: 30px;
+  line-height: 1;
 }
 
 .mobile-fixed-actions .mobile-paren-btn {
@@ -93,6 +95,8 @@ body[data-ui-mode="mobile"] {
   border: 1px solid #cfd6e3;
   color: #39445a;
   font-weight: 700;
+  font-size: 30px;
+  line-height: 1;
 }
 
 .mobile-fixed-actions .mobile-equals-btn {
@@ -100,12 +104,22 @@ body[data-ui-mode="mobile"] {
   border: 1px solid #2659d6;
   color: #ffffff;
   box-shadow: 0 1px 0 rgba(0, 0, 0, 0.08);
+  font-size: 30px;
+  line-height: 1;
 }
 
 .mobile-fixed-actions .mobile-backspace-btn {
   background: #fff4df;
   border: 1px solid #f1c676;
   color: #8b5a00;
+  font-family: "Segoe UI Symbol", "Noto Sans JP", "Yu Gothic UI", sans-serif;
+  font-size: 30px;
+  font-weight: 500;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-bottom: 2px;
 }
 
 .mobile-fixed-actions .clear-btn {
@@ -113,6 +127,8 @@ body[data-ui-mode="mobile"] {
   border: 1px solid #f0a8b0;
   color: #b52133;
   font-weight: 700;
+  font-size: 30px;
+  line-height: 1;
 }
 
 .mobile-fixed-actions .mobile-equals-btn:active {
@@ -133,13 +149,6 @@ body[data-ui-mode="mobile"] {
 
 .mobile-fixed-actions .mobile-paren-btn:active {
   background: #e8edf6;
-}
-
-.mobile-backspace-btn {
-  font-family: "Segoe UI Symbol", "Noto Sans JP", "Yu Gothic UI", sans-serif;
-  font-size: 23px;
-  font-weight: 500;
-  line-height: 1;
 }
 
 .mobile-val-toggle-btn {

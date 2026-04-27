@@ -35,7 +35,7 @@
           type="button"
           class="mobile-val-toggle-btn"
           data-mobile-val-toggle
-          aria-label="数値入力の開閉"
+          aria-label="値入力の開閉"
           aria-controls="mobileScalarWrap"
           aria-expanded="false"
         >
@@ -48,19 +48,20 @@
         <button type="button" class="clear-btn" aria-label="式をクリア">C</button>
       </div>
       <div class="mobile-scalar-input-wrap is-collapsed" id="mobileScalarWrap">
-        <label class="mobile-scalar-label" for="mobileScalarInput">数値入力</label>
+        <label class="mobile-scalar-label" for="mobileScalarInput">値入力</label>
         <div class="mobile-scalar-input-row">
           <input
             id="mobileScalarInput"
             class="mobile-scalar-input"
             type="text"
-            inputmode="decimal"
-            placeholder="例: -3.5 / 2e-3"
+            inputmode="text"
+            placeholder="例: a / -3.5 / 2e-3"
             autocomplete="off"
             spellcheck="false"
+            autocapitalize="off"
             data-mobile-scalar-input
           >
-          <button type="button" class="mobile-scalar-insert-btn" data-mobile-scalar-insert aria-label="数値を挿入">↑</button>
+          <button type="button" class="mobile-scalar-insert-btn" data-mobile-scalar-insert aria-label="値を挿入">↑</button>
         </div>
         <p class="mobile-scalar-error" data-mobile-scalar-error aria-live="polite"></p>
       </div>

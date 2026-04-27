@@ -4,6 +4,7 @@ import { displayResult } from "../../core/displayResult.js";
 import { fetchParsedTokens } from "../../core/api.js";
 import { isValidScalarTokenContent } from "../../core/scalarValidate.js";
 import { initHelp } from "../../core/help.js";
+import { initOperatorTabs } from "../../core/operatorTabs.js";
 
 const SWIPE_THRESHOLD_RATIO = 0.2;
 
@@ -75,7 +76,7 @@ function createScalarCommitter({ tokenManager, scalarInput, scalarError }) {
       return { ok: false, reason: "EMPTY" };
     }
     if (!isValidScalarTokenContent(value)) {
-      showScalarError("不正な数値です");
+      showScalarError("不正な値です");
       return { ok: false, reason: "INVALID" };
     }
     showScalarError("");
@@ -266,24 +267,6 @@ function createMobilePager({ viewport, track, indicator, prevBtn, nextBtn }) {
   };
 }
 
-function initOperatorTabs() {
-  const tabs = document.querySelectorAll(".op-tab-btn");
-  const panels = document.querySelectorAll(".operator-tab-panel");
-  tabs.forEach((tab) => {
-    tab.addEventListener("click", () => {
-      const id = tab.getAttribute("data-tab");
-      tabs.forEach((t) => {
-        const on = t.getAttribute("data-tab") === id;
-        t.classList.toggle("is-active", on);
-        t.setAttribute("aria-selected", on ? "true" : "false");
-      });
-      panels.forEach((p) => {
-        p.classList.toggle("is-active", p.getAttribute("data-panel") === id);
-      });
-    });
-  });
-}
-
 function initOperatorPad(tokenManager, runCalc) {
   const operatorPad = document.querySelector(".operator-pad");
   if (!operatorPad) return;
@@ -464,7 +447,7 @@ function initMobileApp() {
           renderLatestResult(
             resultLog,
             previewTokens,
-            { type: "error", code: "INVALID_SCALAR", message: "不正な数値があります" }
+            { type: "error", code: "INVALID_SCALAR", message: "不正な値があります" }
           );
           return;
         }

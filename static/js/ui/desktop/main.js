@@ -3,6 +3,7 @@ import { TokenManager } from '../../core/tokenManager.js';
 import { displayResult } from '../../core/displayResult.js';
 import { createCalcRunner } from '../../core/calcRunner.js';
 import { initHelp } from '../../core/help.js';
+import { initOperatorTabs } from '../../core/operatorTabs.js';
 
 function showInputError(message) {
   const rl = document.querySelector('.result-log');
@@ -49,26 +50,6 @@ if (addMatrixBtn && matricesContainer) {
       Array.from({ length: 3 }, () => '0')
     );
     matricesContainer.prepend(renderGroup(zeroMatrix, false, ''));
-  });
-}
-
-/** 演算子タブ切替 */
-function initOperatorTabs() {
-  const tabs = document.querySelectorAll('.op-tab-btn');
-  const panels = document.querySelectorAll('.operator-tab-panel');
-  tabs.forEach((tab) => {
-    tab.addEventListener('click', () => {
-      const id = tab.getAttribute('data-tab');
-      tabs.forEach((t) => {
-        const on = t.getAttribute('data-tab') === id;
-        t.classList.toggle('is-active', on);
-        t.setAttribute('aria-selected', on ? 'true' : 'false');
-      });
-      panels.forEach((p) => {
-        const on = p.getAttribute('data-panel') === id;
-        p.classList.toggle('is-active', on);
-      });
-    });
   });
 }
 
