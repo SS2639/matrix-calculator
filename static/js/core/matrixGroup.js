@@ -25,6 +25,36 @@ function setupMatrixCellInput(input) {
     input.addEventListener("input", () => fitMatrixCellWidth(input));
     input.dataset.autosizeBound = "1";
   }
+  if (input.dataset.mobileEnterNavBound !== "1") {
+    input.addEventListener("keydown", (e) => {
+      if (e.key !== "Enter") return;
+      if (document.body?.dataset.uiMode !== "mobile") return;
+
+      const currentTd = input.closest("td");
+      const currentTr = input.closest("tr");
+      const table = input.closest("table");
+      if (!currentTd || !currentTr || !table) return;
+
+      const rowIndex = currentTr.rowIndex;
+      const colIndex = currentTd.cellIndex;
+      const rows = table.rows;
+      const currentRow = rows[rowIndex];
+      if (!currentRow) return;
+
+      let nextInput = null;
+      if (colIndex + 1 < currentRow.cells.length) {
+        nextInput = currentRow.cells[colIndex + 1]?.querySelector("input[type=text]");
+      } else if (rowIndex + 1 < rows.length) {
+        nextInput = rows[rowIndex + 1]?.cells[0]?.querySelector("input[type=text]");
+      }
+
+      if (!nextInput) return;
+      e.preventDefault();
+      nextInput.focus({ preventScroll: true });
+      nextInput.select();
+    });
+    input.dataset.mobileEnterNavBound = "1";
+  }
 }
 
 function refreshAllMatrixCellInputs(table) {

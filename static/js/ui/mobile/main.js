@@ -284,7 +284,7 @@ function initOperatorTabs() {
   });
 }
 
-function initOperatorPad(tokenManager, runCalc, scalarInput, commitScalarFromInput) {
+function initOperatorPad(tokenManager, runCalc) {
   const operatorPad = document.querySelector(".operator-pad");
   if (!operatorPad) return;
 
@@ -321,12 +321,6 @@ function initOperatorPad(tokenManager, runCalc, scalarInput, commitScalarFromInp
     tokenManager.addToken(op, typeHint || "operation-func");
   });
 
-  scalarInput?.addEventListener("keydown", (e) => {
-    if (e.key !== "Enter") return;
-    e.preventDefault();
-    if (e.repeat) return;
-    commitScalarFromInput();
-  });
 }
 
 function initMobileApp() {
@@ -340,7 +334,12 @@ function initMobileApp() {
   const addMatrixBtn = document.querySelector("[data-mobile-add-matrix]");
   const clearBtn = document.querySelector(".clear-btn");
   const backspaceBtn = document.querySelector(".mobile-backspace-btn");
+  const equalsBtn = document.querySelector(".mobile-equals-btn");
+  const valToggleBtn = document.querySelector("[data-mobile-val-toggle]");
+  const parenButtons = document.querySelectorAll("[data-mobile-paren]");
+  const scalarWrap = document.getElementById("mobileScalarWrap");
   const scalarInput = document.querySelector("[data-mobile-scalar-input]");
+  const scalarInsertBtn = document.querySelector("[data-mobile-scalar-insert]");
   const scalarError = document.querySelector("[data-mobile-scalar-error]");
 
   if (
@@ -352,6 +351,7 @@ function initMobileApp() {
     !prevBtn ||
     !nextBtn ||
     !addMatrixBtn ||
+    !scalarWrap ||
     !scalarInput
   ) {
     return;
@@ -373,6 +373,11 @@ function initMobileApp() {
     scalarInput,
     scalarError,
   });
+
+  if (valToggleBtn && scalarWrap) {
+    const isExpanded = valToggleBtn.getAttribute("aria-expanded") === "true";
+    scalarWrap.classList.toggle("is-collapsed", !isExpanded);
+  }
 
   const pager = createMobilePager({
     viewport: matrixViewport,
@@ -405,10 +410,30 @@ function initMobileApp() {
     showScalarError("");
     scalarInput.focus({ preventScroll: true });
   });
+  scalarInsertBtn?.addEventListener("click", () => {
+    commitScalarFromInput();
+    scalarInput.focus({ preventScroll: true });
+  });
   backspaceBtn?.addEventListener("click", () => {
     tokenManager.deletePrevToken();
     showScalarError("");
     expressionBarEl.focus({ preventScroll: true });
+  });
+  valToggleBtn?.addEventListener("click", () => {
+    const expanded = valToggleBtn.getAttribute("aria-expanded") === "true";
+    const nextExpanded = !expanded;
+    valToggleBtn.setAttribute("aria-expanded", nextExpanded ? "true" : "false");
+    scalarWrap.classList.toggle("is-collapsed", !nextExpanded);
+    if (nextExpanded) scalarInput.focus({ preventScroll: true });
+    else expressionBarEl.focus({ preventScroll: true });
+  });
+  parenButtons.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const paren = btn.getAttribute("data-mobile-paren");
+      if (!paren) return;
+      tokenManager.addToken(paren, "paren");
+      expressionBarEl.focus({ preventScroll: true });
+    });
   });
 
   let isRunning = false;
@@ -458,8 +483,13 @@ function initMobileApp() {
     }
   }
 
+  equalsBtn?.addEventListener("click", (e) => {
+    e.preventDefault();
+    runCalc();
+  });
+
   initOperatorTabs();
-  initOperatorPad(tokenManager, runCalc, scalarInput, commitScalarFromInput);
+  initOperatorPad(tokenManager, runCalc);
 
   // MobileではDesktop前提のグローバルキーボード実行を無効化する。
 

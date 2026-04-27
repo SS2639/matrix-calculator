@@ -44,30 +44,124 @@ body[data-ui-mode="mobile"] {
 .mobile-expression-card .top-bar {
   align-items: center;
   gap: 8px;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: #fff;
+  padding-bottom: 8px;
 }
 
 .mobile-expression-card .expression-bar {
-  height: 52px;
-  min-height: 52px;
+  height: 60px;
+  min-height: 60px;
   box-sizing: border-box;
   padding: 0 10px;
+  flex: 1;
 }
 
-.mobile-expression-actions {
+.mobile-fixed-actions {
   display: flex;
-  align-items: stretch;
+  align-items: center;
+  justify-content: space-between;
   gap: 8px;
+  position: sticky;
+  top: 68px;
+  z-index: 9;
+  background: #fff;
+  padding: 0 0 8px;
+  margin-bottom: 4px;
 }
 
-.mobile-expression-actions .mobile-backspace-btn,
-.mobile-expression-actions .clear-btn {
-  width: 56px;
-  min-width: 56px;
-  height: 52px;
-  min-height: 52px;
+.mobile-fixed-actions button {
+  flex: 1 1 0;
+  min-width: 0;
+  height: 60px;
+  min-height: 60px;
   box-sizing: border-box;
   padding: 0;
-  font-size: 18px;
+  font-size: 17px;
+}
+
+.mobile-fixed-actions .mobile-val-toggle-btn {
+  background: #e7f0ff;
+  border: 1px solid #9ebcf8;
+  color: #1b4fb8;
+}
+
+.mobile-fixed-actions .mobile-paren-btn {
+  background: #f2f4f8;
+  border: 1px solid #cfd6e3;
+  color: #39445a;
+  font-weight: 700;
+}
+
+.mobile-fixed-actions .mobile-equals-btn {
+  background: #2f6bff;
+  border: 1px solid #2659d6;
+  color: #ffffff;
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.08);
+}
+
+.mobile-fixed-actions .mobile-backspace-btn {
+  background: #fff4df;
+  border: 1px solid #f1c676;
+  color: #8b5a00;
+}
+
+.mobile-fixed-actions .clear-btn {
+  background: #ffe9eb;
+  border: 1px solid #f0a8b0;
+  color: #b52133;
+  font-weight: 700;
+}
+
+.mobile-fixed-actions .mobile-equals-btn:active {
+  background: #2559db;
+}
+
+.mobile-fixed-actions .clear-btn:active {
+  background: #ffd8dc;
+}
+
+.mobile-fixed-actions .mobile-backspace-btn:active {
+  background: #ffe7be;
+}
+
+.mobile-fixed-actions .mobile-val-toggle-btn:active {
+  background: #d6e5ff;
+}
+
+.mobile-fixed-actions .mobile-paren-btn:active {
+  background: #e8edf6;
+}
+
+.mobile-backspace-btn {
+  font-family: "Segoe UI Symbol", "Noto Sans JP", "Yu Gothic UI", sans-serif;
+  font-size: 23px;
+  font-weight: 500;
+  line-height: 1;
+}
+
+.mobile-val-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  font-weight: 700;
+}
+
+.mobile-val-toggle-icon {
+  font-size: 11px;
+  line-height: 1;
+  transition: transform 0.15s ease;
+}
+
+.mobile-val-toggle-btn[aria-expanded="false"] .mobile-val-toggle-icon {
+  transform: rotate(-90deg);
+}
+
+.mobile-equals-btn {
+  font-weight: 700;
 }
 
 .mobile-scalar-input-wrap {
@@ -77,13 +171,23 @@ body[data-ui-mode="mobile"] {
   gap: 4px;
 }
 
+.mobile-scalar-input-wrap.is-collapsed {
+  display: none;
+}
+
+.mobile-scalar-input-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .mobile-scalar-label {
   font-size: 12px;
   color: #4a5976;
 }
 
 .mobile-scalar-input {
-  width: 100%;
+  flex: 1;
   min-height: 38px;
   box-sizing: border-box;
   border: 1px solid #c8d6f1;
@@ -91,6 +195,15 @@ body[data-ui-mode="mobile"] {
   padding: 8px 10px;
   font-size: 16px;
   background: #fff;
+}
+
+.mobile-scalar-insert-btn {
+  width: 52px;
+  min-width: 52px;
+  min-height: 38px;
+  box-sizing: border-box;
+  font-size: 18px;
+  font-weight: 700;
 }
 
 .mobile-scalar-input:focus {

@@ -29,23 +29,39 @@
           aria-label="数式"
           aria-multiline="false"
         ></div>
-        <div class="mobile-expression-actions">
-          <button type="button" class="mobile-backspace-btn" aria-label="1つ削除">←</button>
-          <button type="button" class="clear-btn" aria-label="式をクリア">C</button>
-        </div>
       </div>
-      <div class="mobile-scalar-input-wrap">
-        <label class="mobile-scalar-label" for="mobileScalarInput">数値入力（Enterで確定）</label>
-        <input
-          id="mobileScalarInput"
-          class="mobile-scalar-input"
-          type="text"
-          inputmode="decimal"
-          placeholder="例: -3.5 / 2e-3"
-          autocomplete="off"
-          spellcheck="false"
-          data-mobile-scalar-input
+      <div class="mobile-fixed-actions" role="group" aria-label="式操作">
+        <button
+          type="button"
+          class="mobile-val-toggle-btn"
+          data-mobile-val-toggle
+          aria-label="数値入力の開閉"
+          aria-controls="mobileScalarWrap"
+          aria-expanded="false"
         >
+          val<span class="mobile-val-toggle-icon" aria-hidden="true">▼</span>
+        </button>
+        <button type="button" class="mobile-paren-btn" data-mobile-paren="(" aria-label="開き括弧">(</button>
+        <button type="button" class="mobile-paren-btn" data-mobile-paren=")" aria-label="閉じ括弧">)</button>
+        <button type="button" class="mobile-equals-btn calc-btn" aria-label="計算">=</button>
+        <button type="button" class="mobile-backspace-btn" aria-label="1つ削除">⌫</button>
+        <button type="button" class="clear-btn" aria-label="式をクリア">C</button>
+      </div>
+      <div class="mobile-scalar-input-wrap is-collapsed" id="mobileScalarWrap">
+        <label class="mobile-scalar-label" for="mobileScalarInput">数値入力</label>
+        <div class="mobile-scalar-input-row">
+          <input
+            id="mobileScalarInput"
+            class="mobile-scalar-input"
+            type="text"
+            inputmode="decimal"
+            placeholder="例: -3.5 / 2e-3"
+            autocomplete="off"
+            spellcheck="false"
+            data-mobile-scalar-input
+          >
+          <button type="button" class="mobile-scalar-insert-btn" data-mobile-scalar-insert aria-label="数値を挿入">↑</button>
+        </div>
         <p class="mobile-scalar-error" data-mobile-scalar-error aria-live="polite"></p>
       </div>
     </section>
@@ -65,9 +81,6 @@
               <button type="button" class="op-btn binary-op" data-op="*">*</button>
               <button type="button" class="op-btn binary-op" data-op="/">/</button>
               <button type="button" class="op-btn binary-op" data-op="**">**</button>
-              <button type="button" class="op-btn paren" data-op="(">(</button>
-              <button type="button" class="op-btn paren" data-op=")">)</button>
-              <button type="button" class="calc-btn">=</button>
             </div>
           </div>
           <div class="operator-tab-panel" data-panel="basic" role="tabpanel">

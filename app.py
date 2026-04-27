@@ -52,6 +52,8 @@ APP_INSTANCE_MARKER_PATH = RUNTIME_DIR / "app-instance.json"
 RUNTIME_INIT_LOCK = Lock()
 RUNTIME_INIT_DONE = False
 app.config["MAX_CONTENT_LENGTH"] = MAX_CONTENT_LENGTH
+# 開発時に古い静的ファイルが残らないよう、既定のキャッシュ寿命を無効化する。
+app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 0
 
 
 def _is_pid_alive(pid):
@@ -284,6 +286,8 @@ def _is_mobile_user_agent(user_agent):
 
 @app.route('/')
 def home():
+    # レイアウト変更時に古いテンプレート断片が残る事象を抑える。
+    app.jinja_env.cache.clear()
     query_ui = str(request.args.get("ui", "")).strip().lower()
     query_forced = query_ui in {"desktop", "mobile"}
     if query_forced:
