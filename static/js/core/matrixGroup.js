@@ -24,11 +24,10 @@ function fitMatrixCellWidth(input) {
   input.style.width = `${nextCh}ch`;
 }
 
-function setupMatrixCellInput(input) {
+function setupMatrixCellInput(input, options = {}) {
+  const enableEnterCellNavigation = options.enableEnterCellNavigation === true;
   input.maxLength = MATRIX_CELL_MAX_LENGTH;
   fitMatrixCellWidth(input);
-  const table = input.closest("table");
-  const enableEnterCellNavigation = table?.dataset.enableEnterCellNavigation === "1";
   if (input.dataset.autosizeBound !== "1") {
     input.addEventListener("input", () => fitMatrixCellWidth(input));
     input.dataset.autosizeBound = "1";
@@ -65,8 +64,9 @@ function setupMatrixCellInput(input) {
 }
 
 function refreshAllMatrixCellInputs(table) {
+  const enableEnterCellNavigation = table?.dataset.enableEnterCellNavigation === "1";
   table.querySelectorAll("input[type=text]").forEach((input) => {
-    setupMatrixCellInput(input);
+    setupMatrixCellInput(input, { enableEnterCellNavigation });
   });
 }
 
@@ -113,7 +113,7 @@ export function renderMatrix(matrix, readOnly = false, options = {}) {
       const input = document.createElement("input");
       input.type = "text";
       input.value = cell;
-      setupMatrixCellInput(input);
+      setupMatrixCellInput(input, { enableEnterCellNavigation: renderOptions.enableEnterCellNavigation });
       input.disabled = readOnly;
       td.appendChild(input);
       tr.appendChild(td);
