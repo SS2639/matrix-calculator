@@ -57,6 +57,12 @@ body[data-ui-mode="mobile"] {
   box-sizing: border-box;
   padding: 0 10px;
   flex: 1;
+  cursor: default;
+}
+
+.mobile-expression-card .expression-bar:focus,
+.mobile-expression-card .expression-bar:focus-visible {
+  outline: none;
 }
 
 .mobile-fixed-actions {

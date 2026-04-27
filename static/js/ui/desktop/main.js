@@ -5,6 +5,14 @@ import { createCalcRunner } from '../../core/calcRunner.js';
 import { initHelp } from '../../core/help.js';
 import { initOperatorTabs } from '../../core/operatorTabs.js';
 
+function resolveMatrixNameById(matrixId) {
+  if (!matrixId) return '';
+  const selector = `.matrix-group[data-matrix-id="${String(matrixId)}"] .matrix-name`;
+  const input = document.querySelector(selector);
+  const name = input?.value?.trim() ?? '';
+  return name;
+}
+
 function showInputError(message) {
   const rl = document.querySelector('.result-log');
   const mc = document.querySelector('.matrices-container');
@@ -13,7 +21,8 @@ function showInputError(message) {
     tokenManager.getPreviewTokensForDisplay(),
     { type: 'error', message },
     mc,
-    rl
+    rl,
+    { resolveMatrixNameById }
   );
 }
 
@@ -96,7 +105,12 @@ initHelp();
 
 // 計算ボタン（フルパッド・クイック行の両方は委譲で処理）
 const resultLog = document.querySelector('.result-log');
-const runCalc = createCalcRunner({ tokenManager, matricesContainer, resultLog });
+const runCalc = createCalcRunner({
+  tokenManager,
+  matricesContainer,
+  resultLog,
+  resolveMatrixNameById,
+});
 
 /** `=` キーで計算（行列セル等の INPUT では無効） */
 document.addEventListener('keydown', (e) => {

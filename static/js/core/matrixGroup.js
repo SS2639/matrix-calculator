@@ -6,6 +6,12 @@ const MATRIX_CELL_MIN_CH = 6;
 const MATRIX_CELL_MAX_CH = 18;
 let tokenManagerRef = null;
 
+function normalizeRenderOptions(options = {}) {
+  return {
+    enableEnterCellNavigation: options.enableEnterCellNavigation === true,
+  };
+}
+
 export function setTokenManager(manager) {
   tokenManagerRef = manager;
 }
@@ -21,14 +27,15 @@ function fitMatrixCellWidth(input) {
 function setupMatrixCellInput(input) {
   input.maxLength = MATRIX_CELL_MAX_LENGTH;
   fitMatrixCellWidth(input);
+  const table = input.closest("table");
+  const enableEnterCellNavigation = table?.dataset.enableEnterCellNavigation === "1";
   if (input.dataset.autosizeBound !== "1") {
     input.addEventListener("input", () => fitMatrixCellWidth(input));
     input.dataset.autosizeBound = "1";
   }
-  if (input.dataset.mobileEnterNavBound !== "1") {
+  if (enableEnterCellNavigation && input.dataset.enterNavBound !== "1") {
     input.addEventListener("keydown", (e) => {
       if (e.key !== "Enter") return;
-      if (document.body?.dataset.uiMode !== "mobile") return;
 
       const currentTd = input.closest("td");
       const currentTr = input.closest("tr");
@@ -53,7 +60,7 @@ function setupMatrixCellInput(input) {
       nextInput.focus({ preventScroll: true });
       nextInput.select();
     });
-    input.dataset.mobileEnterNavBound = "1";
+    input.dataset.enterNavBound = "1";
   }
 }
 
@@ -92,9 +99,11 @@ function makeUniqueMatrixName(desired, excludeMatrixId) {
   return candidate;
 }
 
-export function renderMatrix(matrix, readOnly = false) {
+export function renderMatrix(matrix, readOnly = false, options = {}) {
+  const renderOptions = normalizeRenderOptions(options);
   const table = document.createElement("table");
   table.className = "matrix-table";
+  table.dataset.enableEnterCellNavigation = renderOptions.enableEnterCellNavigation ? "1" : "0";
 
   const fragment = document.createDocumentFragment();
   matrix.forEach(row => {
@@ -116,7 +125,8 @@ export function renderMatrix(matrix, readOnly = false) {
   return table;
 }
 
-export function renderGroup(matrix, readOnly = false, matrixName = "") {
+export function renderGroup(matrix, readOnly = false, matrixName = "", options = {}) {
+  const renderOptions = normalizeRenderOptions(options);
   matrixCount++;
   const group = document.createElement("div");
   group.className = "matrix-group";
@@ -137,7 +147,7 @@ export function renderGroup(matrix, readOnly = false, matrixName = "") {
   if (readOnly) nameInput.disabled = true;
 
   // マトリックス（表本体のみ横スクロール対象にする）
-  const matrixTable = renderMatrix(matrix, readOnly);
+  const matrixTable = renderMatrix(matrix, readOnly, renderOptions);
   const matrixTableScroll = document.createElement("div");
   matrixTableScroll.className = "matrix-table-scroll";
   matrixTableScroll.appendChild(matrixTable);
@@ -267,7 +277,7 @@ export function renderGroup(matrix, readOnly = false, matrixName = "") {
         return input ? input.value : "";
       })
     );
-    const cloned = renderGroup(copiedMatrix, false, nameInput.value);
+    const cloned = renderGroup(copiedMatrix, false, nameInput.value, renderOptions);
     const container = group.parentElement;
     if (container) container.prepend(cloned);
     closeMenu();

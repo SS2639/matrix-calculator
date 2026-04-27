@@ -32,12 +32,15 @@ export class TokenManager {
     this.literalDraft = null;
     this.cursorEl = this.createCursorElement();
     this.onInputError = options.onInputError || (() => {});
+    this.enableBarFocus = options.enableBarFocus !== false;
+    this.focusExpressionBarOnPadInsert = options.focusExpressionBarOnPadInsert !== false;
+    this.enableKeyControls = options.enableKeyControls !== false;
     if (!this.bar) {
       console.error(`TokenManager: element not found for selector "${selector}"`);
       return;
     }
-    this.initExpressionBarFocus();
-    this.initKeyControls();
+    if (this.enableBarFocus) this.initExpressionBarFocus();
+    if (this.enableKeyControls) this.initKeyControls();
     this.renderAll();
   }
 
@@ -278,26 +281,26 @@ export class TokenManager {
       if (prev && prev.type === "binary-op" && prev.content === "*") {
         prev.content = "**";
         this.renderAll();
-        this.bar?.focus({ preventScroll: true });
+        if (this.focusExpressionBarOnPadInsert) this.bar?.focus({ preventScroll: true });
         return;
       }
       this.addToken("*", "binary-op");
-      this.bar?.focus({ preventScroll: true });
+      if (this.focusExpressionBarOnPadInsert) this.bar?.focus({ preventScroll: true });
       return;
     }
     if (op === "**") {
       this.addToken("**", "binary-op");
-      this.bar?.focus({ preventScroll: true });
+      if (this.focusExpressionBarOnPadInsert) this.bar?.focus({ preventScroll: true });
       return;
     }
     if (op === "val") {
       this.literalDraft = "";
       this.renderAll();
-      this.bar?.focus({ preventScroll: true });
+      if (this.focusExpressionBarOnPadInsert) this.bar?.focus({ preventScroll: true });
       return;
     }
     this.addToken(op, type);
-    this.bar?.focus({ preventScroll: true });
+    if (this.focusExpressionBarOnPadInsert) this.bar?.focus({ preventScroll: true });
   }
 
   initKeyControls() {

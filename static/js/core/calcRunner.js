@@ -8,14 +8,14 @@ function clearMatrixErrorHighlights() {
   });
 }
 
-function highlightMatrixCellError(result) {
+function highlightMatrixCellError(result, matricesRoot = document) {
   if (!result || result.type !== "error") return;
   const matrixId = result.matrixId;
   const row = Number(result.row);
   const col = Number(result.col);
   if (!matrixId || !Number.isInteger(row) || !Number.isInteger(col)) return;
 
-  const group = document.querySelector(`.matrix-group[data-matrix-id="${matrixId}"]`);
+  const group = matricesRoot.querySelector(`.matrix-group[data-matrix-id="${matrixId}"]`);
   if (!group) return;
 
   const table = group.querySelector("table");
@@ -35,15 +35,16 @@ function buildTokensData(tokenManager) {
   }));
 }
 
-function buildMatricesData(tokensData) {
+function buildMatricesData(tokensData, matricesRoot = document) {
   const usedMatrixIds = new Set(tokensData.filter((t) => t.type === "matrix").map((t) => t.matrixId));
   const matricesData = {};
 
-  document.querySelectorAll(".matrix-group").forEach((group) => {
+  matricesRoot.querySelectorAll(".matrix-group").forEach((group) => {
     const id = group.dataset.matrixId;
     if (!usedMatrixIds.has(id)) return;
 
     const table = group.querySelector("table");
+    if (!table) return;
     const values = Array.from(table.rows).map((row) =>
       Array.from(row.cells).map((cell) => {
         const input = cell.querySelector("input");
@@ -56,9 +57,10 @@ function buildMatricesData(tokensData) {
   return matricesData;
 }
 
-function showError(tokensData, result, matricesContainer, resultLog) {
-  displayResult(tokensData, result, matricesContainer, resultLog);
-  highlightMatrixCellError(result);
+function showError(tokensData, result, matricesContainer, resultLog, options = {}) {
+  const { matricesRoot = document } = options;
+  displayResult(tokensData, result, matricesContainer, resultLog, options);
+  highlightMatrixCellError(result, matricesRoot);
 }
 
 function createRunningTimer(resultLog) {
@@ -81,10 +83,19 @@ function createRunningTimer(resultLog) {
   };
 }
 
-export function createCalcRunner({ tokenManager, matricesContainer, resultLog }) {
+export function createCalcRunner({
+  tokenManager,
+  matricesContainer,
+  resultLog,
+  matricesRoot = document,
+  resolveMatrixNameById,
+  appendResult = true,
+  showRunningIndicator = true,
+  invalidScalarMessage = "不正な数値があります",
+}) {
   let isRunning = false;
   return async function runCalc() {
-    if (!resultLog || !matricesContainer || isRunning) return;
+    if (!resultLog || isRunning) return;
     isRunning = true;
     clearMatrixErrorHighlights();
 
@@ -100,36 +111,46 @@ export function createCalcRunner({ tokenManager, matricesContainer, resultLog })
         btn.textContent = "=";
       });
     };
-    const stopRunningTimer = createRunningTimer(resultLog);
+    const stopRunningTimer = showRunningIndicator ? createRunningTimer(resultLog) : () => {};
 
     try {
       const flush = tokenManager.flushLiteralDraftForSubmit();
       const previewTokens = tokenManager.getPreviewTokensForDisplay();
       if (!flush.ok) {
-        showError(previewTokens, { type: "error", code: "INVALID_LITERAL", message: flush.message }, matricesContainer, resultLog);
+        if (!appendResult) resultLog.innerHTML = "";
+        displayResult(
+          previewTokens,
+          { type: "error", code: "INVALID_LITERAL", message: flush.message },
+          matricesContainer,
+          resultLog,
+          { resolveMatrixNameById }
+        );
         return;
       }
 
       const tokensData = buildTokensData(tokenManager);
       for (const t of tokensData) {
         if ((t.type === "scalar" || t.type === "symbol") && !isValidScalarTokenContent(t.content)) {
-          showError(
+          if (!appendResult) resultLog.innerHTML = "";
+          displayResult(
             previewTokens,
-            { type: "error", code: "INVALID_SCALAR", message: "不正な数値があります" },
+            { type: "error", code: "INVALID_SCALAR", message: invalidScalarMessage },
             matricesContainer,
-            resultLog
+            resultLog,
+            { resolveMatrixNameById }
           );
           return;
         }
       }
 
-      const matricesData = buildMatricesData(tokensData);
+      const matricesData = buildMatricesData(tokensData, matricesRoot);
       const result = await fetchParsedTokens(tokensData, matricesData);
+      if (!appendResult) resultLog.innerHTML = "";
       if (result.type === "error") {
-        showError(tokensData, result, matricesContainer, resultLog);
+        showError(tokensData, result, matricesContainer, resultLog, { resolveMatrixNameById, matricesRoot });
         return;
       }
-      displayResult(tokensData, result, matricesContainer, resultLog);
+      displayResult(tokensData, result, matricesContainer, resultLog, { resolveMatrixNameById });
     } finally {
       stopRunningTimer();
       restoreCalcButtons();

@@ -1,65 +1,21 @@
 import { setTokenManager, renderGroup } from "../../core/matrixGroup.js";
 import { TokenManager } from "../../core/tokenManager.js";
 import { displayResult } from "../../core/displayResult.js";
-import { fetchParsedTokens } from "../../core/api.js";
 import { isValidScalarTokenContent } from "../../core/scalarValidate.js";
 import { initHelp } from "../../core/help.js";
 import { initOperatorTabs } from "../../core/operatorTabs.js";
+import { createCalcRunner } from "../../core/calcRunner.js";
 
 const SWIPE_THRESHOLD_RATIO = 0.2;
 
-function getTokensData(tokenManager) {
-  return tokenManager.tokens.map((t) => ({
-    content: t.content,
-    type: t.type,
-    matrixId: t.matrixId,
-  }));
-}
-
-function getMatricesData(tokensData, matrixTrack) {
-  const usedMatrixIds = new Set(tokensData.filter((t) => t.type === "matrix").map((t) => t.matrixId));
-  const matricesData = {};
-  matrixTrack.querySelectorAll(".matrix-group").forEach((group) => {
-    const id = group.dataset.matrixId;
-    if (!usedMatrixIds.has(id)) return;
-    const table = group.querySelector("table");
-    if (!table) return;
-    const values = Array.from(table.rows).map((row) =>
-      Array.from(row.cells).map((cell) => {
-        const input = cell.querySelector("input");
-        return input ? (input.value || "") : "";
-      })
-    );
-    matricesData[id] = { values };
-  });
-  return matricesData;
-}
-
-function clearMatrixErrorHighlights() {
-  document.querySelectorAll(".matrix-cell-error").forEach((el) => {
-    el.classList.remove("matrix-cell-error");
-  });
-}
-
-function highlightMatrixCellError(result) {
-  if (!result || result.type !== "error") return;
-  const matrixId = result.matrixId;
-  const row = Number(result.row);
-  const col = Number(result.col);
-  if (!matrixId || !Number.isInteger(row) || !Number.isInteger(col)) return;
-  const group = document.querySelector(`.matrix-group[data-matrix-id="${matrixId}"]`);
-  if (!group) return;
-  const table = group.querySelector("table");
-  if (!table || row < 1 || col < 1 || row > table.rows.length || col > table.rows[0].cells.length) return;
-  const targetInput = table.rows[row - 1].cells[col - 1].querySelector("input");
-  if (!targetInput) return;
-  targetInput.classList.add("matrix-cell-error");
-  targetInput.focus({ preventScroll: true });
-}
-
-function renderLatestResult(resultLog, tokensData, result) {
-  resultLog.innerHTML = "";
-  displayResult(tokensData, result, null, resultLog);
+function createMatrixNameResolver(rootEl) {
+  return (matrixId) => {
+    if (!matrixId || !rootEl) return "";
+    const selector = `.matrix-group[data-matrix-id="${String(matrixId)}"] .matrix-name`;
+    const input = rootEl.querySelector(selector);
+    const name = input?.value?.trim() ?? "";
+    return name;
+  };
 }
 
 function createScalarCommitter({ tokenManager, scalarInput, scalarError }) {
@@ -307,7 +263,6 @@ function initOperatorPad(tokenManager, runCalc) {
 }
 
 function initMobileApp() {
-  const expressionBarEl = document.querySelector(".expression-bar");
   const resultLog = document.querySelector("[data-mobile-result-log]");
   const matrixViewport = document.querySelector("[data-mobile-matrix-viewport]");
   const matrixTrack = document.querySelector("[data-mobile-matrix-track]");
@@ -326,7 +281,6 @@ function initMobileApp() {
   const scalarError = document.querySelector("[data-mobile-scalar-error]");
 
   if (
-    !expressionBarEl ||
     !resultLog ||
     !matrixViewport ||
     !matrixTrack ||
@@ -341,11 +295,17 @@ function initMobileApp() {
   }
 
   const tokenManager = new TokenManager(".expression-bar", {
+    enableBarFocus: false,
+    enableKeyControls: false,
+    focusExpressionBarOnPadInsert: false,
     onInputError: (message) => {
-      renderLatestResult(
-        resultLog,
+      resultLog.innerHTML = "";
+      displayResult(
         tokenManager.getPreviewTokensForDisplay(),
-        { type: "error", message }
+        { type: "error", message },
+        null,
+        resultLog,
+        { resolveMatrixNameById: createMatrixNameResolver(matrixTrack) }
       );
     },
   });
@@ -372,7 +332,7 @@ function initMobileApp() {
 
   function addMatrix() {
     const zeroMatrix = Array.from({ length: 3 }, () => Array.from({ length: 3 }, () => "0"));
-    const group = renderGroup(zeroMatrix, false, "");
+    const group = renderGroup(zeroMatrix, false, "", { enableEnterCellNavigation: true });
     pager.addMatrixGroup(group);
     pager.reindexPages();
   }
@@ -391,80 +351,39 @@ function initMobileApp() {
   clearBtn?.addEventListener("click", () => {
     tokenManager.clearAll();
     showScalarError("");
-    scalarInput.focus({ preventScroll: true });
   });
   scalarInsertBtn?.addEventListener("click", () => {
     commitScalarFromInput();
-    scalarInput.focus({ preventScroll: true });
   });
   backspaceBtn?.addEventListener("click", () => {
     tokenManager.deletePrevToken();
     showScalarError("");
-    expressionBarEl.focus({ preventScroll: true });
   });
   valToggleBtn?.addEventListener("click", () => {
     const expanded = valToggleBtn.getAttribute("aria-expanded") === "true";
     const nextExpanded = !expanded;
     valToggleBtn.setAttribute("aria-expanded", nextExpanded ? "true" : "false");
     scalarWrap.classList.toggle("is-collapsed", !nextExpanded);
-    if (nextExpanded) scalarInput.focus({ preventScroll: true });
-    else expressionBarEl.focus({ preventScroll: true });
   });
   parenButtons.forEach((btn) => {
     btn.addEventListener("click", () => {
       const paren = btn.getAttribute("data-mobile-paren");
       if (!paren) return;
       tokenManager.addToken(paren, "paren");
-      expressionBarEl.focus({ preventScroll: true });
     });
   });
 
-  let isRunning = false;
-  async function runCalc() {
-    if (isRunning) return;
-    isRunning = true;
-    clearMatrixErrorHighlights();
-    const calcButtons = document.querySelectorAll(".calc-btn");
-    calcButtons.forEach((btn) => {
-      btn.disabled = true;
-      btn.textContent = "……";
-    });
-    try {
-      const flush = tokenManager.flushLiteralDraftForSubmit();
-      const previewTokens = tokenManager.getPreviewTokensForDisplay();
-      if (!flush.ok) {
-        renderLatestResult(
-          resultLog,
-          previewTokens,
-          { type: "error", code: "INVALID_LITERAL", message: flush.message }
-        );
-        return;
-      }
-
-      const tokensData = getTokensData(tokenManager);
-      for (const t of tokensData) {
-        if ((t.type === "scalar" || t.type === "symbol") && !isValidScalarTokenContent(t.content)) {
-          renderLatestResult(
-            resultLog,
-            previewTokens,
-            { type: "error", code: "INVALID_SCALAR", message: "不正な値があります" }
-          );
-          return;
-        }
-      }
-
-      const matricesData = getMatricesData(tokensData, matrixTrack);
-      const result = await fetchParsedTokens(tokensData, matricesData);
-      renderLatestResult(resultLog, tokensData, result);
-      if (result.type === "error") highlightMatrixCellError(result);
-    } finally {
-      calcButtons.forEach((btn) => {
-        btn.disabled = false;
-        btn.textContent = "=";
-      });
-      isRunning = false;
-    }
-  }
+  const resolveMatrixNameById = createMatrixNameResolver(matrixTrack);
+  const runCalc = createCalcRunner({
+    tokenManager,
+    matricesContainer: null,
+    resultLog,
+    matricesRoot: matrixTrack,
+    resolveMatrixNameById,
+    appendResult: false,
+    showRunningIndicator: false,
+    invalidScalarMessage: "不正な値があります",
+  });
 
   equalsBtn?.addEventListener("click", (e) => {
     e.preventDefault();

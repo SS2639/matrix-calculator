@@ -29,7 +29,7 @@ function is2dMatrix(value) {
   );
 }
 
-function getMatrixNameById(matrixId) {
+function getMatrixNameByIdFromDom(matrixId) {
   if (!matrixId) return "";
   const group = Array.from(document.querySelectorAll(".matrix-group")).find(
     (el) => el.getAttribute("data-matrix-id") === String(matrixId)
@@ -40,9 +40,9 @@ function getMatrixNameById(matrixId) {
   return name || "";
 }
 
-function formatErrorMessageWithMatrixName(message, matrixId) {
+function formatErrorMessageWithMatrixName(message, matrixId, resolveMatrixNameById) {
   if (!message || !matrixId) return message;
-  const matrixName = getMatrixNameById(matrixId);
+  const matrixName = resolveMatrixNameById?.(matrixId) || getMatrixNameByIdFromDom(matrixId);
   if (!matrixName) return message;
 
   // 例: 「行列1の...」「行列 1 の...」を「行列Aの...」へ統一置換
@@ -78,7 +78,8 @@ function createMatrixBlock(matrix, matrixName, appendTarget) {
   return block;
 }
 
-function renderResultItem(exprStr, item, matricesContainer) {
+function renderResultItem(exprStr, item, matricesContainer, options = {}) {
+  const { resolveMatrixNameById } = options;
   const resultGroup = document.createElement("div");
   resultGroup.classList.add("result-group");
 
@@ -102,7 +103,7 @@ function renderResultItem(exprStr, item, matricesContainer) {
       resultGroup.classList.add("error");
       body.appendChild(
         createTextDiv(
-          `${exprStr} → ${formatErrorMessageWithMatrixName(item.message, item.matrixId)}${item.code ? ` [${item.code}]` : ""}`
+          `${exprStr} → ${formatErrorMessageWithMatrixName(item.message, item.matrixId, resolveMatrixNameById)}${item.code ? ` [${item.code}]` : ""}`
         )
       );
       break;
@@ -186,9 +187,9 @@ function renderResultItem(exprStr, item, matricesContainer) {
   return resultGroup;
 }
 
-export function displayResult(tokensData, result, matricesContainer, resultLog) {
+export function displayResult(tokensData, result, matricesContainer, resultLog, options = {}) {
   const exprStr = tokensData.map((t) => t.content).join(" ");
-  const item = renderResultItem(exprStr, result, matricesContainer);
+  const item = renderResultItem(exprStr, result, matricesContainer, options);
   const firstResultGroup = resultLog.querySelector(".result-group");
   if (firstResultGroup) {
     resultLog.insertBefore(item, firstResultGroup);

@@ -390,7 +390,7 @@ button:disabled {
 
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 4px;
 
   outline: none;
   cursor: text;
@@ -657,7 +657,7 @@ button:disabled {
   justify-content: center;
   align-items: center;
   border: 1px solid rgba(120, 120, 120, 0.72);
-  margin: 0 4px;
+  margin: 0 2px;
   padding: 4px 8px;
   cursor: pointer;
   user-select: none;
@@ -680,10 +680,11 @@ button:disabled {
   border-radius: 6px;
 }
 
-.token.operation-func {
-  width: 50px;
-  height: 40px;
-  border-radius: 10px;
+.token.operation-func,
+.token.analysis-func {
+  width: 32px;
+  height: 32px;
+  border-radius: 0;
 }
 
 /* 可変幅のトークン */
