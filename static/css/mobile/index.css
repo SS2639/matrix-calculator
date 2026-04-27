@@ -86,7 +86,7 @@ body[data-ui-mode="mobile"] {
   background: #e7f0ff;
   border: 1px solid #9ebcf8;
   color: #1b4fb8;
-  font-size: 30px;
+  font-size: 20px;
   line-height: 1;
 }
 
@@ -95,7 +95,7 @@ body[data-ui-mode="mobile"] {
   border: 1px solid #cfd6e3;
   color: #39445a;
   font-weight: 700;
-  font-size: 30px;
+  font-size: 23px;
   line-height: 1;
 }
 
