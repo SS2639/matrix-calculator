@@ -1,6 +1,7 @@
 import unittest
 from unittest.mock import patch
 from pathlib import Path
+from concurrent.futures import TimeoutError as FutureTimeoutError
 
 import app as app_module
 from app import app
@@ -160,27 +161,22 @@ class MatrixCalculatorAppTests(unittest.TestCase):
         self.assertNotIn("secret detail", result["message"])
 
     def test_calculation_timeout_returns_504_and_code(self):
-        class DummyProcess:
-            def __init__(self, *args, **kwargs):
-                pass
+        class DummyFuture:
+            def result(self, timeout=None):
+                raise FutureTimeoutError()
 
-            def start(self):
-                return None
-
-            def join(self, timeout=None):
-                return None
-
-            def is_alive(self):
+            def cancel(self):
                 return True
 
-            def terminate(self):
-                return None
+        class DummyExecutor:
+            def submit(self, *args, **kwargs):
+                return DummyFuture()
 
         payload = {
-            "tokens": [{"type": "scalar", "content": "1"}],
-            "matrices": {}
+            "tokens": [{"type": "matrix", "content": "M1", "matrixId": "1"}],
+            "matrices": {"1": {"values": [["1"]]}}
         }
-        with patch("app.Process", DummyProcess):
+        with patch("app._get_calc_executor", return_value=DummyExecutor()):
             response = self.client.post("/parse_tokens", json=payload)
         self.assertEqual(response.status_code, 504)
         data = response.get_json()
@@ -198,6 +194,30 @@ class MatrixCalculatorAppTests(unittest.TestCase):
         data = response.get_json()
         self.assertEqual(data["type"], "error")
         self.assertEqual(data["code"], "SERVER_BUSY")
+
+    def test_cancel_calc_running_future_triggers_executor_reset(self):
+        class RunningFuture:
+            def cancel(self):
+                return False
+
+            def done(self):
+                return False
+
+        future = RunningFuture()
+        client_key = ("127.0.0.1", "")
+        with patch("app._client_scope_key", return_value=client_key):
+            with app_module.ACTIVE_CALCS_LOCK:
+                app_module.ACTIVE_CALCS["req-1"] = future
+                app_module.ACTIVE_CALC_CLIENT_MAP[(client_key, "cid-1")] = "req-1"
+            with patch("app._reset_calc_executor") as reset_mock:
+                response = self.client.post("/cancel_calc", json={"requestId": "cid-1"})
+            with app_module.ACTIVE_CALCS_LOCK:
+                app_module.ACTIVE_CALCS.clear()
+                app_module.ACTIVE_CALC_CLIENT_MAP.clear()
+        self.assertEqual(response.status_code, 200)
+        data = response.get_json()
+        self.assertTrue(data["cancelled"])
+        reset_mock.assert_called_once()
 
     def test_rate_limit_window_behavior(self):
         with patch("app.RATE_LIMIT_WINDOW_S", 10), patch("app.RATE_LIMIT_MAX_REQUESTS", 2):

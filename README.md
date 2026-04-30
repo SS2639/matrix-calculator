@@ -27,9 +27,16 @@ gunicorn -w 2 -b 0.0.0.0:8000 wsgi:application
 Render の Web Service では次を推奨します。
 
 - Build Command: `pip install -r requirements.txt`
-- Start Command: `gunicorn -w 2 -b 0.0.0.0:$PORT wsgi:application`
+- Start Command: `gunicorn -w 1 -b 0.0.0.0:$PORT wsgi:application`
 - インスタンスタイプ: 単一インスタンスで開始（必要時にスケール）
 - `/.runtime` は永続ディスクへ配置（保持したい場合）
+
+### Render 遅延チューニング手順
+
+1. まず `-w 1` でデプロイし、ウォーム状態で 10 回程度の応答時間を計測する。
+2. その後 `-w 2` に切り替えて同条件で再計測し、中央値・タイムアウト率（504）を比較する。
+3. 小さいインスタンスでは `-w 1` のほうが安定するケースが多いため、中央値と失敗率の両方で良い方を採用する。
+4. `MATRIX_CALC_MAX_CONCURRENT_CALCS` は `gunicorn` の worker 数と同じか小さめから始める。
 
 ## テスト実行
 
@@ -40,8 +47,7 @@ python -m unittest discover -s tests -q
 ## 公開運用向け環境変数
 
 - `MATRIX_CALC_MAX_CONCURRENT_CALCS`: `/parse_tokens` の同時実行上限（既定 `2`）。
-- `MATRIX_CALC_PROCESS_TIMEOUT_S`: 計算プロセスのタイムアウト秒（既定 `20`）。
-- `MATRIX_CALC_QUEUE_TIMEOUT_S`: 子プロセス結果取得のタイムアウト秒（既定 `1`）。
+- `MATRIX_CALC_PROCESS_TIMEOUT_S`: 計算処理タイムアウト秒（既定 `60`）。
 - `MATRIX_CALC_RATE_LIMIT_WINDOW_S`: レートリミットの集計ウィンドウ秒（既定 `60`）。
 - `MATRIX_CALC_RATE_LIMIT_MAX_REQUESTS`: 上記ウィンドウ内で許可する最大リクエスト数（既定 `30`）。
 - `MATRIX_CALC_MAX_CONTENT_LENGTH_BYTES`: リクエストボディ上限（既定 `262144` バイト）。

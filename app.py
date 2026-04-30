@@ -1,8 +1,7 @@
 from flask import Flask, render_template, request, jsonify
 from expr_calc import MatrixCalculator
 from calc_log_store import mask_expression, append_calc_log_entry, init_calc_log_storage
-from multiprocessing import Process, Queue
-from queue import Empty
+from concurrent.futures import ProcessPoolExecutor, TimeoutError as FutureTimeoutError, CancelledError
 from threading import BoundedSemaphore, Lock
 from werkzeug.exceptions import HTTPException
 from werkzeug.exceptions import RequestEntityTooLarge
@@ -22,7 +21,6 @@ MAX_MATRIX_COUNT = max(1, int(os.getenv("MATRIX_CALC_MAX_MATRIX_COUNT", "32")))
 MAX_MATRIX_DIM = max(1, int(os.getenv("MATRIX_CALC_MAX_MATRIX_DIM", "20")))
 MAX_MATRIX_CELL_CHARS = max(1, int(os.getenv("MATRIX_CALC_MAX_MATRIX_CELL_CHARS", "64")))
 PROCESS_TIMEOUT_S = float(os.getenv("MATRIX_CALC_PROCESS_TIMEOUT_S", "60"))
-QUEUE_GET_TIMEOUT_S = float(os.getenv("MATRIX_CALC_QUEUE_TIMEOUT_S", "1"))
 MAX_CONCURRENT_CALCS = max(1, int(os.getenv("MATRIX_CALC_MAX_CONCURRENT_CALCS", "2")))
 RATE_LIMIT_WINDOW_S = max(1, int(os.getenv("MATRIX_CALC_RATE_LIMIT_WINDOW_S", "60")))
 RATE_LIMIT_MAX_REQUESTS = max(1, int(os.getenv("MATRIX_CALC_RATE_LIMIT_MAX_REQUESTS", "30")))
@@ -32,6 +30,10 @@ RATE_LIMIT_LOCK = Lock()
 ACTIVE_CALCS = {}
 ACTIVE_CALC_CLIENT_MAP = {}
 ACTIVE_CALCS_LOCK = Lock()
+CANCELLED_CLIENT_REQUESTS = set()
+CANCELLED_CLIENT_REQUESTS_LOCK = Lock()
+CALC_EXECUTOR = None
+CALC_EXECUTOR_LOCK = Lock()
 PROJECT_ROOT = Path(__file__).resolve().parent
 
 
@@ -245,10 +247,62 @@ def apply_runtime_mode_settings(debug):
     app.jinja_env.auto_reload = bool(debug)
 
 
-def calc_worker(tokens, matrices, queue):
+def calc_worker(tokens, matrices):
     calc = MatrixCalculator(tokens, matrices)
-    result = calc.evaluate()
-    queue.put(result)
+    return calc.evaluate()
+
+
+def _create_calc_executor():
+    return ProcessPoolExecutor(max_workers=MAX_CONCURRENT_CALCS)
+
+
+def _get_calc_executor():
+    global CALC_EXECUTOR
+    with CALC_EXECUTOR_LOCK:
+        if CALC_EXECUTOR is None:
+            CALC_EXECUTOR = _create_calc_executor()
+        return CALC_EXECUTOR
+
+
+def _reset_calc_executor():
+    global CALC_EXECUTOR
+    with CALC_EXECUTOR_LOCK:
+        old_executor = CALC_EXECUTOR
+        CALC_EXECUTOR = _create_calc_executor()
+    if old_executor is not None:
+        old_executor.shutdown(wait=False, cancel_futures=True)
+
+
+def _is_lightweight_request(tokens, matrices):
+    if not isinstance(tokens, list) or not isinstance(matrices, dict):
+        return False
+    if matrices:
+        return False
+    if len(tokens) != 1:
+        return False
+    token = tokens[0] if tokens else {}
+    return isinstance(token, dict) and token.get("type") == "scalar"
+
+
+def _mark_cancel_requested(client_key, client_request_id):
+    if not client_request_id:
+        return
+    with CANCELLED_CLIENT_REQUESTS_LOCK:
+        CANCELLED_CLIENT_REQUESTS.add((client_key, client_request_id))
+
+
+def _is_cancel_requested(client_key, client_request_id):
+    if not client_request_id:
+        return False
+    with CANCELLED_CLIENT_REQUESTS_LOCK:
+        return (client_key, client_request_id) in CANCELLED_CLIENT_REQUESTS
+
+
+def _clear_cancel_requested(client_key, client_request_id):
+    if not client_request_id:
+        return
+    with CANCELLED_CLIENT_REQUESTS_LOCK:
+        CANCELLED_CLIENT_REQUESTS.discard((client_key, client_request_id))
 
 
 def _is_rate_limited(client_key):
@@ -371,14 +425,17 @@ def cancel_calc():
     client_key = _client_scope_key()
     with ACTIVE_CALCS_LOCK:
         active_calc_id = ACTIVE_CALC_CLIENT_MAP.get((client_key, client_request_id))
-        process = ACTIVE_CALCS.get(active_calc_id) if active_calc_id else None
+        future = ACTIVE_CALCS.get(active_calc_id) if active_calc_id else None
 
-    if process is None:
+    if future is None:
         return jsonify({"status": "ok", "cancelled": False, "requestId": client_request_id})
 
-    if process.is_alive():
-        process.terminate()
-        process.join(timeout=1.0)
+    _mark_cancel_requested(client_key, client_request_id)
+    if future.cancel():
+        return jsonify({"status": "ok", "cancelled": True, "requestId": client_request_id})
+    if not future.done():
+        # 実行中の Future は cancel() できないため、executor を再作成して中断を試みる。
+        _reset_calc_executor()
         return jsonify({"status": "ok", "cancelled": True, "requestId": client_request_id})
     return jsonify({"status": "ok", "cancelled": False, "requestId": client_request_id})
 
@@ -388,11 +445,19 @@ def parse_tokens():
     request_id = str(uuid.uuid4())
     client_request_id = None
     request_started_at = time.perf_counter()
+    validation_finished_at = request_started_at
+    execution_started_at = request_started_at
+    execution_finished_at = request_started_at
+    run_mode = "uninitialized"
     data = request.get_json(silent=True)
     tokens = []
 
     def finalize_response(payload, status=200, extra_headers=None):
-        elapsed_ms = int((time.perf_counter() - request_started_at) * 1000)
+        response_started_at = time.perf_counter()
+        elapsed_ms = int((response_started_at - request_started_at) * 1000)
+        validation_ms = int((validation_finished_at - request_started_at) * 1000)
+        execution_wait_ms = int((execution_started_at - validation_finished_at) * 1000)
+        execution_ms = int((execution_finished_at - execution_started_at) * 1000)
         is_error = isinstance(payload, dict) and payload.get("type") == "error"
         append_calc_log_entry(
             db_path=CALC_DB_PATH,
@@ -403,6 +468,20 @@ def parse_tokens():
             ok=not is_error and status < 400,
             error_code=payload.get("code") if is_error else None,
             logger=app.logger,
+        )
+        log_finished_at = time.perf_counter()
+        logging_ms = int((log_finished_at - response_started_at) * 1000)
+        total_ms = int((log_finished_at - request_started_at) * 1000)
+        app.logger.info(
+            "parse_tokens timing request_id=%s mode=%s total_ms=%s validation_ms=%s queue_wait_ms=%s execution_ms=%s log_ms=%s status=%s",
+            request_id,
+            run_mode,
+            total_ms,
+            validation_ms,
+            execution_wait_ms,
+            execution_ms,
+            logging_ms,
+            status,
         )
         response = jsonify(payload)
         response.status_code = status
@@ -475,39 +554,61 @@ def parse_tokens():
         )
         return finalize_response(payload, status)
 
-    queue = None
-    p = None
+    validation_finished_at = time.perf_counter()
+    future = None
     try:
-        queue = Queue()
-        p = Process(target=calc_worker, args=(tokens, matrices, queue))
-        p.start()
+        execution_started_at = time.perf_counter()
         client_key = _client_scope_key()
-        with ACTIVE_CALCS_LOCK:
-            ACTIVE_CALCS[request_id] = p
-            if client_request_id:
-                ACTIVE_CALC_CLIENT_MAP[(client_key, client_request_id)] = request_id
-        p.join(timeout=PROCESS_TIMEOUT_S)
-
-        if p.is_alive():
-            p.terminate()
-            p.join()
-            payload, status = error_response(
-                "サーバー応答がタイムアウトしました。式を簡略化して再実行してください",
-                "CALCULATION_TIMEOUT",
-                504
-            )
-            return finalize_response(payload, status)
-
-        # 計算結果を取得（子プロセス異常終了時の待ち続けを防ぐ）
-        try:
-            result = queue.get(timeout=QUEUE_GET_TIMEOUT_S)
-        except Empty:
-            payload, status = error_response(
-                "計算結果を取得できませんでした",
-                "RESULT_UNAVAILABLE",
-                500
-            )
-            return finalize_response(payload, status)
+        if _is_lightweight_request(tokens, matrices):
+            run_mode = "inline"
+            result = calc_worker(tokens, matrices)
+        else:
+            run_mode = "executor"
+            future = _get_calc_executor().submit(calc_worker, tokens, matrices)
+            with ACTIVE_CALCS_LOCK:
+                ACTIVE_CALCS[request_id] = future
+                if client_request_id:
+                    ACTIVE_CALC_CLIENT_MAP[(client_key, client_request_id)] = request_id
+            try:
+                result = future.result(timeout=PROCESS_TIMEOUT_S)
+            except CancelledError:
+                payload, status = error_response(
+                    "計算を停止しました",
+                    "REQUEST_ABORTED",
+                    499
+                )
+                return finalize_response(payload, status)
+            except FutureTimeoutError:
+                future.cancel()
+                _reset_calc_executor()
+                payload, status = error_response(
+                    "サーバー応答がタイムアウトしました。式を簡略化して再実行してください",
+                    "CALCULATION_TIMEOUT",
+                    504
+                )
+                return finalize_response(payload, status)
+            except Exception:
+                if _is_cancel_requested(client_key, client_request_id):
+                    payload, status = error_response(
+                        "計算を停止しました",
+                        "REQUEST_ABORTED",
+                        499
+                    )
+                    return finalize_response(payload, status)
+                payload, status = error_response(
+                    "計算結果を取得できませんでした",
+                    "RESULT_UNAVAILABLE",
+                    500
+                )
+                return finalize_response(payload, status)
+            if _is_cancel_requested(client_key, client_request_id):
+                payload, status = error_response(
+                    "計算を停止しました",
+                    "REQUEST_ABORTED",
+                    499
+                )
+                return finalize_response(payload, status)
+        execution_finished_at = time.perf_counter()
 
         if isinstance(result, dict) and result.get("type") == "error":
             app.logger.info(
@@ -522,11 +623,7 @@ def parse_tokens():
             ACTIVE_CALCS.pop(request_id, None)
             if client_request_id:
                 ACTIVE_CALC_CLIENT_MAP.pop((client_key, client_request_id), None)
-        if queue is not None:
-            queue.close()
-            queue.join_thread()
-        if p is not None and hasattr(p, "close"):
-            p.close()
+                _clear_cancel_requested(client_key, client_request_id)
         if acquired:
             CALC_CONCURRENCY_GATE.release()
 
