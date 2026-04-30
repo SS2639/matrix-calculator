@@ -139,16 +139,21 @@ class MatrixCalculator:
                 lambda eigvects: {
                     "eigenvalues": [simplify(ev) for ev, _, _ in eigvects],
                     "multiplicities": [mult for _, mult, _ in eigvects],
-                    "eigenvectors": [Matrix([simplify(v) for v in vecs]) for _, _, vecs in eigvects]
+                    "eigenvectors": [
+                        Matrix.hstack(*[vec.applyfunc(simplify) for vec in vecs])
+                        for _, _, vecs in eigvects
+                    ]
                 }
             )(M.eigenvects()),
             "QR": lambda M: (
                 lambda qr: {"Q": qr[0], "R": qr[1]}
             )(M.QRdecomposition()),
-            "jord": lambda M: {
-                "P": M.jordan_form()[0],
-                "J": M.jordan_form()[1],
-            },
+            "jord": lambda M: (
+                lambda jordan: {
+                    "P": jordan[0],
+                    "J": jordan[1],
+                }
+            )(M.jordan_form()),
             "norm": lambda M: M.norm(),
             "LU": lambda M: (
                 lambda lu: {"L": lu[0], "U": lu[1]}
