@@ -2,7 +2,6 @@ import {
   ALLOWED_SYMBOL_CHARS,
   appendLiteralKey,
   isIncompleteLiteralDraft,
-  isValidScalarTokenContent,
 } from "./scalarValidate.js";
 
 class Token {
@@ -82,12 +81,9 @@ export class TokenManager {
     if (isIncompleteLiteralDraft(this.literalDraft)) {
       return { ok: false, message: "数値が不完全です" };
     }
-    const s = this.literalDraft.trim();
-    if (!isValidScalarTokenContent(s)) {
-      return { ok: false, message: "不正な数値があります" };
-    }
+    const committedLiteral = this.literalDraft;
     this.literalDraft = null;
-    this.addToken(s, "scalar");
+    this.addToken(committedLiteral, "scalar");
     return { ok: true };
   }
 
@@ -202,13 +198,22 @@ export class TokenManager {
     this.renderAll();
   }
 
-  handleTokenClick(index) {
+  resolveCursorIndexByTokenClick(index, event, tokenEl) {
+    if (!event || !tokenEl) return index + 1;
+    const bounds = tokenEl.getBoundingClientRect();
+    const width = bounds.width;
+    if (!Number.isFinite(width) || width <= 0) return index + 1;
+    const offsetX = event.clientX - bounds.left;
+    return offsetX < width / 2 ? index : index + 1;
+  }
+
+  handleTokenClick(index, event, tokenEl) {
     const r = this.commitLiteralDraft();
     if (!r.ok) {
       this.onInputError(r.message);
       return;
     }
-    this.cursorIndex = index + 1;
+    this.cursorIndex = this.resolveCursorIndexByTokenClick(index, event, tokenEl);
     this.renderAll();
   }
 
@@ -233,7 +238,7 @@ export class TokenManager {
       if (i < this.tokens.length) {
         const t = this.tokens[i];
         const el = t.render(this.bar);
-        el.addEventListener("click", () => this.handleTokenClick(i));
+        el.addEventListener("click", (event) => this.handleTokenClick(i, event, el));
       }
     }
   }

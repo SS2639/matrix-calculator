@@ -1,6 +1,5 @@
 import { displayResult } from "./displayResult.js";
 import { fetchParsedTokens } from "./api.js";
-import { isValidScalarTokenContent } from "./scalarValidate.js";
 
 function clearMatrixErrorHighlights() {
   document.querySelectorAll(".matrix-cell-error").forEach((el) => {
@@ -129,19 +128,6 @@ export function createCalcRunner({
       }
 
       const tokensData = buildTokensData(tokenManager);
-      for (const t of tokensData) {
-        if ((t.type === "scalar" || t.type === "symbol") && !isValidScalarTokenContent(t.content)) {
-          if (!appendResult) resultLog.innerHTML = "";
-          displayResult(
-            previewTokens,
-            { type: "error", code: "INVALID_SCALAR", message: invalidScalarMessage },
-            matricesContainer,
-            resultLog,
-            { resolveMatrixNameById }
-          );
-          return;
-        }
-      }
 
       const matricesData = buildMatricesData(tokensData, matricesRoot);
       const result = await fetchParsedTokens(tokensData, matricesData);

@@ -4,38 +4,24 @@ import { ALLOWED_SYMBOL_CHARS } from "./allowedSymbols.gen.js";
 export { ALLOWED_SYMBOL_CHARS };
 
 /**
- * 式バーに置くスカラー／記号トークン文字列の検証（サーバ送信前）。
- * - 単一文字 a,b,c,x,y,z,n は SymPy 記号として許可
- * - それ以外は trim 後、有限の数値として解釈できること
- */
-export function isValidScalarTokenContent(s) {
-  if (typeof s !== "string") return false;
-  const t = s.trim();
-  if (t === "") return false;
-  if (t.length === 1 && ALLOWED_SYMBOL_CHARS.has(t)) return true;
-  const n = Number(t);
-  return Number.isFinite(n);
-}
-
-/**
  * 入力途中のリテラル下書きが「まだ数値として確定できない」状態か。
  * 確定を試みるべきでない（エラーにすべき）不完全例: "-", ".", "1e", "1e-"
  */
 export function isIncompleteLiteralDraft(draft) {
   if (draft == null || draft === "") return false;
-  const t = draft.trim();
-  if (t === "") return false;
-  if (t.length === 1 && ALLOWED_SYMBOL_CHARS.has(t)) return false;
-  const n = Number(t);
-  if (Number.isFinite(n)) return false;
+  const text = String(draft).trim();
+  if (text === "") return false;
+  if (text.length === 1 && ALLOWED_SYMBOL_CHARS.has(text)) return false;
+  const numericValue = Number(text);
+  if (Number.isFinite(numericValue)) return false;
   // Number が NaN でも、さらに入力で有限になる可能性があるパターン（先頭の +/- はリテラルに含めない）
-  if (/^(\d+\.?\d*|\.\d*)[eE][-+]?\d*$/.test(t)) {
-    const expPart = t.split(/[eE]/)[1];
+  if (/^(\d+\.?\d*|\.\d*)[eE][-+]?\d*$/.test(text)) {
+    const expPart = text.split(/[eE]/)[1];
     if (expPart === "" || expPart === "+" || expPart === "-") return true;
   }
-  if (/^[eE]/.test(t)) return true;
-  if (t === ".") return true;
-  if (/[eE][+-]?$/.test(t)) return true;
+  if (/^[eE]/.test(text)) return true;
+  if (text === ".") return true;
+  if (/[eE][+-]?$/.test(text)) return true;
   // それ以外の NaN は不正な文字列の可能性が高いが、不完全扱いにしない（確定時に弾く）
   return false;
 }

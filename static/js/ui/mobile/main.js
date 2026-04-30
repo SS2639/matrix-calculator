@@ -1,7 +1,6 @@
 import { setTokenManager, renderGroup } from "../../core/matrixGroup.js";
 import { TokenManager } from "../../core/tokenManager.js";
 import { displayResult } from "../../core/displayResult.js";
-import { isValidScalarTokenContent } from "../../core/scalarValidate.js";
 import { initHelp } from "../../core/help.js";
 import { initOperatorTabs } from "../../core/operatorTabs.js";
 import { createCalcRunner } from "../../core/calcRunner.js";
@@ -25,15 +24,10 @@ function createScalarCommitter({ tokenManager, scalarInput, scalarError }) {
   }
 
   function commitScalarFromInput() {
-    const raw = String(scalarInput?.value ?? "");
-    const value = raw.trim();
+    const value = String(scalarInput?.value ?? "");
     if (!value) {
       showScalarError("");
       return { ok: false, reason: "EMPTY" };
-    }
-    if (!isValidScalarTokenContent(value)) {
-      showScalarError("不正な値です");
-      return { ok: false, reason: "INVALID" };
     }
     showScalarError("");
     tokenManager.addToken(value, "scalar");
