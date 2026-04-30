@@ -2,6 +2,7 @@ import { renderGroup, setTokenManager } from '../../core/matrixGroup.js';
 import { TokenManager } from '../../core/tokenManager.js';
 import { displayResult } from '../../core/displayResult.js';
 import { createCalcRunner } from '../../core/calcRunner.js';
+import { createRunOrCancelHandler, setCalcButtonsStopMode } from '../../core/calcControls.js';
 import { initHelp } from '../../core/help.js';
 import { initOperatorTabs } from '../../core/operatorTabs.js';
 
@@ -105,12 +106,18 @@ initHelp();
 
 // 計算ボタン（フルパッド・クイック行の両方は委譲で処理）
 const resultLog = document.querySelector('.result-log');
-const runCalc = createCalcRunner({
+const calcRunner = createCalcRunner({
   tokenManager,
   matricesContainer,
   resultLog,
   resolveMatrixNameById,
+  onRunStateChange: (state) => {
+    const isStopMode = state === 'running' || state === 'cancelling';
+    setCalcButtonsStopMode(Array.from(document.querySelectorAll('.calc-btn')), isStopMode);
+  },
 });
+
+const runCalc = createRunOrCancelHandler(calcRunner);
 
 /** `=` キーで計算（行列セル等の INPUT では無効） */
 document.addEventListener('keydown', (e) => {

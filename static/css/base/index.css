@@ -510,6 +510,12 @@ button:disabled {
   filter: brightness(0.85);
 }
 
+.calc-btn.is-stop {
+  background: #ffe0e0 !important;
+  border-color: #d45a5a !important;
+  color: #9f1f1f !important;
+}
+
 /* ==========================
    結果ログ
    ========================== */

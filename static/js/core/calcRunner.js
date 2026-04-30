@@ -1,5 +1,6 @@
 import { displayResult } from "./displayResult.js";
-import { fetchParsedTokens } from "./api.js";
+import { cancelCalcRequest, fetchParsedTokens } from "./api.js";
+import { startRunningTimer } from "./runningTimer.js";
 
 function clearMatrixErrorHighlights() {
   document.querySelectorAll(".matrix-cell-error").forEach((el) => {
@@ -65,21 +66,15 @@ function showError(tokensData, result, matricesContainer, resultLog, options = {
 function createRunningTimer(resultLog) {
   const indicator = document.createElement("div");
   indicator.className = "calc-running-indicator";
-  indicator.textContent = "実行中: 0.0秒";
   resultLog.prepend(indicator);
-
-  const startedAtMs = Date.now();
-  const renderElapsed = () => {
-    const elapsedSec = (Date.now() - startedAtMs) / 1000;
-    indicator.textContent = `実行中: ${elapsedSec.toFixed(1)}秒`;
-  };
-  renderElapsed();
-  const timerId = window.setInterval(renderElapsed, 100);
-
-  return () => {
-    window.clearInterval(timerId);
-    indicator.remove();
-  };
+  return startRunningTimer({
+    onTick: (text) => {
+      indicator.textContent = text;
+    },
+    onStop: () => {
+      indicator.remove();
+    },
+  });
 }
 
 export function createCalcRunner({
@@ -90,27 +85,38 @@ export function createCalcRunner({
   resolveMatrixNameById,
   appendResult = true,
   showRunningIndicator = true,
-  invalidScalarMessage = "不正な数値があります",
+  onRunningTimeText,
+  onRunStateChange,
 }) {
   let isRunning = false;
-  return async function runCalc() {
+  let isCancelling = false;
+  /** @type {AbortController | null} */
+  let abortController = null;
+  let activeRequestId = null;
+
+  const notifyRunState = () => {
+    if (typeof onRunStateChange !== "function") return;
+    if (isCancelling) onRunStateChange("cancelling");
+    else if (isRunning) onRunStateChange("running");
+    else onRunStateChange("idle");
+  };
+
+  const run = async () => {
     if (!resultLog || isRunning) return;
     isRunning = true;
+    isCancelling = false;
+    abortController = new AbortController();
+    activeRequestId = `calc_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+    notifyRunState();
     clearMatrixErrorHighlights();
-
-    const calcButtons = document.querySelectorAll(".calc-btn");
-    calcButtons.forEach((btn) => {
-      btn.disabled = true;
-      btn.textContent = "……";
-    });
-
-    const restoreCalcButtons = () => {
-      calcButtons.forEach((btn) => {
-        btn.disabled = false;
-        btn.textContent = "=";
-      });
-    };
-    const stopRunningTimer = showRunningIndicator ? createRunningTimer(resultLog) : () => {};
+    const stopRunningTimer = showRunningIndicator
+      ? createRunningTimer(resultLog)
+      : (typeof onRunningTimeText === "function"
+        ? startRunningTimer({
+          onTick: (text) => onRunningTimeText(text),
+          onStop: () => onRunningTimeText(""),
+        })
+        : () => {});
 
     try {
       const flush = tokenManager.flushLiteralDraftForSubmit();
@@ -130,17 +136,43 @@ export function createCalcRunner({
       const tokensData = buildTokensData(tokenManager);
 
       const matricesData = buildMatricesData(tokensData, matricesRoot);
-      const result = await fetchParsedTokens(tokensData, matricesData);
+      const result = await fetchParsedTokens(tokensData, matricesData, {
+        signal: abortController.signal,
+        requestId: activeRequestId,
+      });
       if (!appendResult) resultLog.innerHTML = "";
       if (result.type === "error") {
+        if (result.code === "REQUEST_ABORTED") return;
         showError(tokensData, result, matricesContainer, resultLog, { resolveMatrixNameById, matricesRoot });
         return;
       }
       displayResult(tokensData, result, matricesContainer, resultLog, { resolveMatrixNameById });
     } finally {
+      abortController = null;
+      activeRequestId = null;
+      isCancelling = false;
       stopRunningTimer();
-      restoreCalcButtons();
       isRunning = false;
+      notifyRunState();
     }
+  };
+
+  const cancel = () => {
+    if (!isRunning || !abortController) return false;
+    isCancelling = true;
+    notifyRunState();
+    void cancelCalcRequest(activeRequestId).then((cancelResult) => {
+      if (!cancelResult || cancelResult.status !== "ok" || cancelResult.cancelled !== true) {
+        console.warn("cancel request was not confirmed by server", cancelResult);
+      }
+    });
+    abortController.abort();
+    return true;
+  };
+
+  return {
+    run,
+    cancel,
+    isRunning: () => isRunning,
   };
 }

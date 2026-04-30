@@ -36,6 +36,25 @@ body[data-ui-mode="mobile"] {
   font-size: 16px;
 }
 
+.mobile-result-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.mobile-result-header .mobile-section-title {
+  margin: 0;
+}
+
+.mobile-result-timer {
+  font-size: 12px;
+  color: #0d47a1;
+  font-weight: 700;
+  min-height: 1em;
+}
+
 .mobile-result-card .result-log {
   min-height: 100px;
   max-height: 320px;
@@ -139,6 +158,16 @@ body[data-ui-mode="mobile"] {
 
 .mobile-fixed-actions .mobile-equals-btn:active {
   background: #2559db;
+}
+
+.mobile-fixed-actions .mobile-equals-btn.is-stop {
+  background: #ffdfe2;
+  border: 1px solid #d96c78;
+  color: #a32739;
+}
+
+.mobile-fixed-actions .mobile-equals-btn.is-stop:active {
+  background: #ffcfd5;
 }
 
 .mobile-fixed-actions .clear-btn:active {

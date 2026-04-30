@@ -4,6 +4,7 @@ from calc_log_store import mask_expression, append_calc_log_entry, init_calc_log
 from multiprocessing import Process, Queue
 from queue import Empty
 from threading import BoundedSemaphore, Lock
+from werkzeug.exceptions import HTTPException
 from werkzeug.exceptions import RequestEntityTooLarge
 import os
 import json
@@ -20,7 +21,7 @@ MAX_TOKEN_CONTENT_CHARS = max(1, int(os.getenv("MATRIX_CALC_MAX_TOKEN_CONTENT_CH
 MAX_MATRIX_COUNT = max(1, int(os.getenv("MATRIX_CALC_MAX_MATRIX_COUNT", "32")))
 MAX_MATRIX_DIM = max(1, int(os.getenv("MATRIX_CALC_MAX_MATRIX_DIM", "20")))
 MAX_MATRIX_CELL_CHARS = max(1, int(os.getenv("MATRIX_CALC_MAX_MATRIX_CELL_CHARS", "64")))
-PROCESS_TIMEOUT_S = float(os.getenv("MATRIX_CALC_PROCESS_TIMEOUT_S", "20"))
+PROCESS_TIMEOUT_S = float(os.getenv("MATRIX_CALC_PROCESS_TIMEOUT_S", "60"))
 QUEUE_GET_TIMEOUT_S = float(os.getenv("MATRIX_CALC_QUEUE_TIMEOUT_S", "1"))
 MAX_CONCURRENT_CALCS = max(1, int(os.getenv("MATRIX_CALC_MAX_CONCURRENT_CALCS", "2")))
 RATE_LIMIT_WINDOW_S = max(1, int(os.getenv("MATRIX_CALC_RATE_LIMIT_WINDOW_S", "60")))
@@ -28,6 +29,9 @@ RATE_LIMIT_MAX_REQUESTS = max(1, int(os.getenv("MATRIX_CALC_RATE_LIMIT_MAX_REQUE
 CALC_CONCURRENCY_GATE = BoundedSemaphore(MAX_CONCURRENT_CALCS)
 RATE_LIMIT_STATE = {}
 RATE_LIMIT_LOCK = Lock()
+ACTIVE_CALCS = {}
+ACTIVE_CALC_CLIENT_MAP = {}
+ACTIVE_CALCS_LOCK = Lock()
 PROJECT_ROOT = Path(__file__).resolve().parent
 
 
@@ -123,12 +127,19 @@ def write_instance_marker():
 
 def error_response(message, code, status):
     if status >= 500:
-        app.logger.warning("parse_tokens error: status=%s code=%s message=%s", status, code, message)
+        app.logger.warning("server error response: status=%s code=%s message=%s", status, code, message)
     return {
         "type": "error",
         "code": code,
-        "message": message
+        "message": message,
+        "status": status,
     }, status
+
+
+def _client_scope_key():
+    remote_addr = request.remote_addr or "unknown"
+    user_agent = str(request.headers.get("User-Agent", ""))[:160]
+    return remote_addr, user_agent
 
 
 def _validate_input_limits(tokens, matrices):
@@ -229,10 +240,9 @@ def initialize_runtime():
 
 
 def apply_runtime_mode_settings(debug):
-    # テンプレート変更を即時反映するため、常時 auto reload を有効化する。
-    # （debug=False でも HTML だけ古い状態が残る問題を防ぐ）
-    app.config["TEMPLATES_AUTO_RELOAD"] = True
-    app.jinja_env.auto_reload = True
+    # 開発時のみテンプレート自動リロードを有効化する。
+    app.config["TEMPLATES_AUTO_RELOAD"] = bool(debug)
+    app.jinja_env.auto_reload = bool(debug)
 
 
 def calc_worker(tokens, matrices, queue):
@@ -286,8 +296,6 @@ def _is_mobile_user_agent(user_agent):
 
 @app.route('/')
 def home():
-    # レイアウト変更時に古いテンプレート断片が残る事象を抑える。
-    app.jinja_env.cache.clear()
     query_ui = str(request.args.get("ui", "")).strip().lower()
     query_forced = query_ui in {"desktop", "mobile"}
     if query_forced:
@@ -326,6 +334,8 @@ def handle_request_too_large(_error):
 
 @app.errorhandler(Exception)
 def handle_unexpected_error(error):
+    if isinstance(error, HTTPException):
+        return error
     app.logger.exception("unexpected server error: %s", error)
     payload, status = error_response(
         "サーバー内部エラーが発生しました。時間をおいて再試行してください",
@@ -337,17 +347,46 @@ def handle_unexpected_error(error):
 
 @app.get("/_meta")
 def app_meta():
-    return jsonify({"type": "error", "code": "NOT_FOUND", "message": "not found"}), 404
+    payload, status = error_response("not found", "NOT_FOUND", 404)
+    return jsonify(payload), status
 
 
 @app.get("/health")
 def health():
     return jsonify({"status": "ok"})
 
+
+@app.post("/cancel_calc")
+def cancel_calc():
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        payload, status = error_response("リクエストJSONが不正です", "INVALID_JSON", 400)
+        return jsonify(payload), status
+
+    client_request_id = str(data.get("requestId", "")).strip()[:128]
+    if not client_request_id:
+        payload, status = error_response("requestId が必要です", "MISSING_REQUEST_ID", 400)
+        return jsonify(payload), status
+
+    client_key = _client_scope_key()
+    with ACTIVE_CALCS_LOCK:
+        active_calc_id = ACTIVE_CALC_CLIENT_MAP.get((client_key, client_request_id))
+        process = ACTIVE_CALCS.get(active_calc_id) if active_calc_id else None
+
+    if process is None:
+        return jsonify({"status": "ok", "cancelled": False, "requestId": client_request_id})
+
+    if process.is_alive():
+        process.terminate()
+        process.join(timeout=1.0)
+        return jsonify({"status": "ok", "cancelled": True, "requestId": client_request_id})
+    return jsonify({"status": "ok", "cancelled": False, "requestId": client_request_id})
+
 @app.route("/parse_tokens", methods=["POST"])
 def parse_tokens():
     initialize_runtime()
     request_id = str(uuid.uuid4())
+    client_request_id = None
     request_started_at = time.perf_counter()
     data = request.get_json(silent=True)
     tokens = []
@@ -375,6 +414,9 @@ def parse_tokens():
     if not isinstance(data, dict):
         payload, status = error_response("リクエストJSONが不正です", "INVALID_JSON", 400)
         return finalize_response(payload, status)
+    client_request_id_candidate = str(data.get("requestId", "")).strip()
+    if client_request_id_candidate:
+        client_request_id = client_request_id_candidate[:128]
 
     tokens = data.get("tokens", [])
     matrices = data.get("matrices", {})
@@ -414,7 +456,7 @@ def parse_tokens():
             return finalize_response(payload, status)
 
     # 未検証の X-Forwarded-For は信頼せず、WSGI 層が確定した remote_addr を利用する。
-    client_key = request.remote_addr or "unknown"
+    client_key = _client_scope_key()[0]
     limited, retry_after = _is_rate_limited(client_key)
     if limited:
         payload, status = error_response(
@@ -439,6 +481,11 @@ def parse_tokens():
         queue = Queue()
         p = Process(target=calc_worker, args=(tokens, matrices, queue))
         p.start()
+        client_key = _client_scope_key()
+        with ACTIVE_CALCS_LOCK:
+            ACTIVE_CALCS[request_id] = p
+            if client_request_id:
+                ACTIVE_CALC_CLIENT_MAP[(client_key, client_request_id)] = request_id
         p.join(timeout=PROCESS_TIMEOUT_S)
 
         if p.is_alive():
@@ -470,6 +517,11 @@ def parse_tokens():
             )
         return finalize_response(result)
     finally:
+        client_key = _client_scope_key()
+        with ACTIVE_CALCS_LOCK:
+            ACTIVE_CALCS.pop(request_id, None)
+            if client_request_id:
+                ACTIVE_CALC_CLIENT_MAP.pop((client_key, client_request_id), None)
         if queue is not None:
             queue.close()
             queue.join_thread()
