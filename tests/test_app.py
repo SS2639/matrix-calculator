@@ -81,6 +81,28 @@ class MatrixCalculatorAppTests(unittest.TestCase):
         self.assertEqual(data["row"], 1)
         self.assertEqual(data["col"], 2)
 
+    def test_eig_returns_square_basis_matrix_P(self):
+        payload = {
+            "tokens": [
+                {"type": "operation-func", "content": "eig("},
+                {"type": "matrix", "content": "M1", "matrixId": "1"},
+                {"type": "paren", "content": ")"},
+            ],
+            "matrices": {
+                "1": {
+                    "values": [["1", "2"], ["3", "4"]]
+                }
+            }
+        }
+        response = self.client.post("/parse_tokens", json=payload)
+        self.assertEqual(response.status_code, 200)
+        data = response.get_json()
+        self.assertEqual(data["type"], "eig")
+        self.assertIn("P", data)
+        self.assertEqual(len(data["P"]), 2)
+        self.assertEqual(len(data["P"][0]), 2)
+        self.assertTrue(all(not isinstance(cell, list) for row in data["P"] for cell in row))
+
     def test_invalid_payload_type_returns_400_and_code(self):
         payload = {"tokens": "not-array", "matrices": {}}
         response = self.client.post("/parse_tokens", json=payload)

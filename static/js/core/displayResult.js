@@ -29,6 +29,10 @@ function is2dMatrix(value) {
   );
 }
 
+function isScalarMatrix(value) {
+  return is2dMatrix(value) && value.every((row) => row.every((cell) => !Array.isArray(cell)));
+}
+
 function getMatrixNameByIdFromDom(matrixId) {
   if (!matrixId) return "";
   const group = Array.from(document.querySelectorAll(".matrix-group")).find(
@@ -111,20 +115,11 @@ function renderResultItem(exprStr, item, matricesContainer, options = {}) {
     case "eig":
       if (
         Array.isArray(item.eigenvalues) &&
-        Array.isArray(item.eigenvectors) &&
-        item.eigenvectors.length > 0 &&
-        item.eigenvectors.every((vec) => Array.isArray(vec))
+        isScalarMatrix(item.P)
       ) {
         body.appendChild(createTextDiv(`${exprStr} = 固有値: ${item.eigenvalues.join(", ")}`));
-        const eigenMatrix = item.eigenvectors[0].map((_, rowIndex) =>
-          item.eigenvectors.map((vec) => vec[rowIndex])
-        );
-        if (is2dMatrix(eigenMatrix)) {
-          body.appendChild(createTextDiv("P"));
-          body.appendChild(createMatrixBlock(eigenMatrix, "P", matricesContainer));
-        } else {
-          body.appendChild(createTextDiv(`${exprStr} → 固有ベクトルの形式が不正です`));
-        }
+        body.appendChild(createTextDiv("P"));
+        body.appendChild(createMatrixBlock(item.P, "P", matricesContainer));
       } else {
         body.appendChild(createTextDiv(`${exprStr} → 固有値分解の結果形式が不正です`));
       }

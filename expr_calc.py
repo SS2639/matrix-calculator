@@ -241,6 +241,38 @@ class MatrixCalculator:
         data = mat.tolist()
         return [[self._to_user_str(c) for c in row] for row in data]
 
+    def _build_eigenvector_basis_matrix(self, eigenvector_blocks):
+        """eig() の結果から n x n の基底行列 P を構成する。"""
+        if not isinstance(eigenvector_blocks, list) or not eigenvector_blocks:
+            raise CalcInputError("固有ベクトルの形式が不正です", code="INVALID_EIGENVECTOR_FORMAT")
+
+        columns = []
+        row_count = None
+        for block in eigenvector_blocks:
+            if not isinstance(block, MatrixBase):
+                raise CalcInputError("固有ベクトルの形式が不正です", code="INVALID_EIGENVECTOR_FORMAT")
+            if row_count is None:
+                row_count = int(block.rows)
+            elif int(block.rows) != row_count:
+                raise CalcInputError("固有ベクトルの次元が一致しません", code="INVALID_EIGENVECTOR_DIMENSION")
+
+            if int(block.cols) > 0:
+                columns.append(block[:, 0])
+
+        if row_count is None or row_count <= 0:
+            raise CalcInputError("固有ベクトルの形式が不正です", code="INVALID_EIGENVECTOR_FORMAT")
+
+        if not columns:
+            raise CalcInputError("固有ベクトルが取得できませんでした", code="EIGENVECTOR_NOT_FOUND")
+
+        basis_matrix = Matrix.hstack(*columns)
+        if int(basis_matrix.cols) != row_count:
+            raise CalcInputError(
+                "固有ベクトルが不足しているため正方行列 P を構成できません",
+                code="EIGENVECTOR_BASIS_INCOMPLETE",
+            )
+        return basis_matrix
+
     def _is_non_finite_atom(self, value):
         if isinstance(value, Expr):
             # SymPy は 0除算などを例外ではなく zoo/oo/nan として返すことがある
@@ -280,11 +312,13 @@ class MatrixCalculator:
 
             # 固有値分解
             elif "eigenvalues" in elem and "eigenvectors" in elem:
+                basis_matrix = self._build_eigenvector_basis_matrix(elem["eigenvectors"])
                 return {
                     "type": "eig",
                     "eigenvalues": [self._to_user_str(ev) for ev in elem["eigenvalues"]],
                     "multiplicities": elem["multiplicities"],
-                    "eigenvectors": [self._matrix_to_user_str(vec) for vec in elem["eigenvectors"]]
+                    "eigenvectors": [self._matrix_to_user_str(vec) for vec in elem["eigenvectors"]],
+                    "P": self._matrix_to_user_str(basis_matrix),
                 }
 
             # ジョルダン分解
